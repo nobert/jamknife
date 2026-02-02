@@ -221,9 +221,46 @@ class MBIDPlexMapping(Base):
 
 
 def init_database(db_path: Path) -> sessionmaker:
-    """Initialize database and return session factory."""
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    engine = create_engine(f"sqlite:///{db_path}", echo=False)
-    Base.metadata.create_all(engine)
-    logger.info("Database initialized at %s", db_path)
+    """Initialize database and return session factory.
+
+    Creates the database file and directory if they don't exist.
+    """
+    # Ensure parent directory exists
+    try:
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+    except Exception as e:
+        logger.error("Failed to create database directory %s: %s", db_path.parent, e)
+        raise
+
+    # Verify directory is writable
+    if not db_path.parent.is_dir():
+        raise RuntimeError(f"Database directory does not exist: {db_path.parent}")
+
+    # Try to create a test file to verify write permissions
+    test_file = db_path.parent / ".write_test"
+    try:
+        test_file.touch()
+        test_file.unlink()
+    except Exception as e:
+        logger.error("Database directory %s is not writable: %s", db_path.parent, e)
+        raise RuntimeError(
+            f"Database directory is not writable: {db_path.parent}"
+        ) from e
+
+    # Check if database already exists (after verifying directory access)
+    is_new_db = not db_path.exists()
+
+    # Create database engine and tables
+    try:
+        engine = create_engine(f"sqlite:///{db_path}", echo=False)
+        Base.metadata.create_all(engine)
+    except Exception as e:
+        logger.error("Failed to initialize database at %s: %s", db_path, e)
+        raise
+
+    if is_new_db:
+        logger.info("Created new database at %s", db_path)
+    else:
+        logger.info("Opened existing database at %s", db_path)
+
     return sessionmaker(bind=engine)
