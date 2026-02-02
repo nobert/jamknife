@@ -681,6 +681,10 @@ async def sync_job_detail_page(request: Request, job_id: int, session: SessionDe
     job_dict = {
         "id": job.id,
         "playlist_id": job.playlist_id,
+        "playlist": {
+            "id": job.playlist.id if job.playlist else job.playlist_id,
+            "name": job.playlist.name if job.playlist else "Unknown Playlist",
+        },
         "status": job.status.value,
         "error_message": job.error_message,
         "tracks_total": job.tracks_total,
