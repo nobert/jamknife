@@ -139,3 +139,90 @@ def test_downloads_page_renders(client):
 
     assert response.status_code == 200
     assert "Test Album" in response.text
+
+
+def test_downloads_page_filter_by_status(client):
+    """Ensure downloads page status filter works."""
+    with web_app._session_factory() as session:
+        # Create a failed download
+        failed_download = AlbumDownload(
+            ytmusic_album_id="failed123",
+            ytmusic_album_url="https://music.youtube.com/browse/failed123",
+            album_name="Failed Album",
+            artist_name="Failed Artist",
+            status=DownloadStatus.FAILED,
+            error_message="Test error message",
+            progress=0,
+        )
+        session.add(failed_download)
+        
+        # Create a completed download
+        completed_download = AlbumDownload(
+            ytmusic_album_id="completed123",
+            ytmusic_album_url="https://music.youtube.com/browse/completed123",
+            album_name="Completed Album",
+            artist_name="Completed Artist",
+            status=DownloadStatus.COMPLETED,
+            progress=100,
+        )
+        session.add(completed_download)
+        session.commit()
+
+    # Test filtering by failed status
+    response = client.get("/downloads?status=failed")
+    assert response.status_code == 200
+    assert "Failed Album" in response.text
+    assert "Test error message" in response.text
+    assert "Completed Album" not in response.text
+
+    # Test filtering by completed status
+    response = client.get("/downloads?status=completed")
+    assert response.status_code == 200
+    assert "Completed Album" in response.text
+    assert "Failed Album" not in response.text
+
+
+def test_retry_download_endpoint(client, monkeypatch):
+    """Ensure retry endpoint resets failed downloads."""
+    # Mock YubalClient to avoid actual API calls
+    from unittest.mock import Mock
+    from jamknife.clients.yubal import YubalClient
+    
+    mock_job = Mock(id="job123")
+    monkeypatch.setattr(YubalClient, "create_job", lambda self, url: mock_job)
+    
+    with web_app._session_factory() as session:
+        download = AlbumDownload(
+            ytmusic_album_id="retry123",
+            ytmusic_album_url="https://music.youtube.com/browse/retry123",
+            album_name="Retry Album",
+            artist_name="Retry Artist",
+            status=DownloadStatus.FAILED,
+            error_message="Previous error",
+            progress=50,
+        )
+        session.add(download)
+        session.commit()
+        download_id = download.id
+
+    # Retry the download
+    response = client.post(f"/api/downloads/{download_id}/retry")
+    assert response.status_code == 200
+    assert response.json()["download_id"] == download_id
+
+    # Verify the download was reset (before background task completes)
+    with web_app._session_factory() as session:
+        download = session.query(AlbumDownload).filter_by(id=download_id).first()
+        # Should be reset to pending immediately, background task will update to queued
+        assert download.status in (DownloadStatus.PENDING, DownloadStatus.QUEUED)
+        assert download.progress == 0
+        assert download.error_message is None
+
+
+def test_retry_non_failed_download_fails(client):
+    """Ensure retry endpoint rejects non-failed downloads."""
+    _download_id = _create_download()  # Creates a completed download
+
+    response = client.post(f"/api/downloads/{_download_id}/retry")
+    assert response.status_code == 400
+    assert "Only failed downloads" in response.json()["detail"]

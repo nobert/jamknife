@@ -1,6 +1,7 @@
 """ListenBrainz API client for fetching playlists."""
 
 import logging
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -38,15 +39,17 @@ class Playlist:
 class ListenBrainzClient:
     """Client for the ListenBrainz API."""
 
-    def __init__(self, token: str | None = None, timeout: float = 30.0):
+    def __init__(self, token: str | None = None, timeout: float = 30.0, max_retries: int = 3):
         """Initialize the client.
 
         Args:
             token: Optional ListenBrainz user token for authenticated requests.
             timeout: Request timeout in seconds.
+            max_retries: Maximum number of retry attempts for failed requests.
         """
         self._token = token
         self._timeout = timeout
+        self._max_retries = max_retries
         self._client = httpx.Client(timeout=timeout)
 
     def _headers(self) -> dict[str, str]:
@@ -57,11 +60,51 @@ class ListenBrainzClient:
         return headers
 
     def _get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict:
-        """Make a GET request to the API."""
+        """Make a GET request to the API with retry logic."""
         url = f"{LISTENBRAINZ_API_BASE}{endpoint}"
-        response = self._client.get(url, headers=self._headers(), params=params)
-        response.raise_for_status()
-        return response.json()
+        
+        last_error = None
+        for attempt in range(self._max_retries):
+            try:
+                logger.debug(f"ListenBrainz API request (attempt {attempt + 1}/{self._max_retries}): GET {url}")
+                response = self._client.get(url, headers=self._headers(), params=params)
+                response.raise_for_status()
+                return response.json()
+            except httpx.ConnectError as e:
+                last_error = e
+                logger.warning(
+                    f"Connection error on attempt {attempt + 1}/{self._max_retries} "
+                    f"for {url}: {e}"
+                )
+                if attempt < self._max_retries - 1:
+                    delay = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.info(f"Retrying in {delay}s...")
+                    time.sleep(delay)
+            except httpx.TimeoutException as e:
+                last_error = e
+                logger.warning(
+                    f"Timeout on attempt {attempt + 1}/{self._max_retries} "
+                    f"for {url}: {e}"
+                )
+                if attempt < self._max_retries - 1:
+                    delay = 2 ** attempt
+                    logger.info(f"Retrying in {delay}s...")
+                    time.sleep(delay)
+            except httpx.HTTPStatusError as e:
+                # Don't retry on HTTP errors (4xx, 5xx)
+                logger.error(f"HTTP error for {url}: {e.response.status_code} {e.response.text}")
+                raise
+        
+        # All retries exhausted
+        logger.error(
+            f"All {self._max_retries} retry attempts failed for {url}. "
+            f"Last error: {last_error}"
+        )
+        raise httpx.ConnectError(
+            f"Failed to connect to ListenBrainz API after {self._max_retries} attempts. "
+            f"This may be a network issue, firewall blocking the connection, or a problem "
+            f"with the ListenBrainz API. Last error: {last_error}"
+        ) from last_error
 
     def get_user_playlists(
         self, username: str, count: int = 25, offset: int = 0

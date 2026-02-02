@@ -2,7 +2,7 @@
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
@@ -11,6 +11,7 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from jamknife.clients.yubal import YubalClient
 from jamknife.config import get_config
 from jamknife.database import (
     AlbumDownload,
@@ -527,6 +528,62 @@ async def list_downloads(
     ]
 
 
+@app.post("/api/downloads/{download_id}/retry")
+async def retry_download(
+    download_id: int, session: SessionDep, background_tasks: BackgroundTasks
+):
+    """Retry a failed download."""
+    download = session.query(AlbumDownload).filter_by(id=download_id).first()
+    if not download:
+        raise HTTPException(status_code=404, detail="Download not found")
+
+    if download.status != DownloadStatus.FAILED:
+        raise HTTPException(
+            status_code=400, detail="Only failed downloads can be retried"
+        )
+
+    # Reset the download to pending
+    download.status = DownloadStatus.PENDING
+    download.progress = 0
+    download.error_message = None
+    download.completed_at = None
+    session.commit()
+
+    # Queue the download in the background
+    config = get_config()
+    yubal = YubalClient(config.yubal_url)
+
+    def start_download():
+        try:
+            job = yubal.create_job(url=download.ytmusic_album_url)
+            # Update status to queued
+            s = _session_factory()
+            try:
+                d = s.query(AlbumDownload).filter_by(id=download_id).first()
+                if d:
+                    d.status = DownloadStatus.QUEUED
+                    d.yubal_job_id = job.id
+                    d.queued_at = datetime.now(timezone.utc)
+                    s.commit()
+            finally:
+                s.close()
+        except Exception as e:
+            logger.exception("Failed to retry download %d", download_id)
+            s = _session_factory()
+            try:
+                d = s.query(AlbumDownload).filter_by(id=download_id).first()
+                if d:
+                    d.status = DownloadStatus.FAILED
+                    d.error_message = str(e)
+                    s.commit()
+            finally:
+                s.close()
+
+    background_tasks.add_task(start_download)
+
+    return {"message": "Download retry initiated", "download_id": download_id}
+
+
 # ============================================================================
 # Web UI Routes
 # ============================================================================
@@ -641,19 +698,24 @@ async def playlist_detail_page(request: Request, playlist_id: int, session: Sess
 
 
 @app.get("/downloads", response_class=HTMLResponse)
-async def downloads_page(request: Request, session: SessionDep):
+async def downloads_page(
+    request: Request, session: SessionDep, status: str | None = None
+):
     """Render the downloads page."""
     if templates is None:
         return HTMLResponse("<h1>Templates not configured</h1>")
 
     config = get_config()
 
-    downloads = (
-        session.query(AlbumDownload)
-        .order_by(AlbumDownload.created_at.desc())
-        .limit(100)
-        .all()
-    )
+    query = session.query(AlbumDownload)
+    if status:
+        try:
+            download_status = DownloadStatus(status)
+            query = query.filter_by(status=download_status)
+        except ValueError:
+            pass  # Ignore invalid status, show all
+
+    downloads = query.order_by(AlbumDownload.created_at.desc()).limit(100).all()
 
     return templates.TemplateResponse(
         "downloads.html",
