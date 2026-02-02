@@ -453,8 +453,8 @@ async def create_sync_job(
     # Run sync in background
     background_tasks.add_task(sync_service.run_sync_job, job.id)
 
-    # Refresh to get the job with relationships
-    session.refresh(job)
+    # Re-query the job in this session to get it with relationships
+    job = session.query(PlaylistSyncJob).filter_by(id=job.id).first()
 
     return SyncJobResponse(
         id=job.id,
