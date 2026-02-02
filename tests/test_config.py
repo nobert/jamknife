@@ -1,10 +1,5 @@
 """Tests for configuration module."""
 
-import os
-from pathlib import Path
-
-import pytest
-
 from jamknife.config import Config, get_config
 
 

@@ -47,7 +47,16 @@ ENV LISTENBRAINZ_USERNAME="" \
     DATA_DIR="/data" \
     DOWNLOADS_DIR="/downloads" \
     WEB_HOST="0.0.0.0" \
-    WEB_PORT="8080"
+    WEB_PORT="8080" \
+    POLL_INTERVAL="60" \
+    DAILY_JAM_ENABLED="true" \
+    DAILY_JAM_TIME="08:00" \
+    WEEKLY_JAM_ENABLED="true" \
+    WEEKLY_JAM_DAY="monday" \
+    WEEKLY_JAM_TIME="08:00" \
+    WEEKLY_EXPLORE_ENABLED="true" \
+    WEEKLY_EXPLORE_DAY="monday" \
+    WEEKLY_EXPLORE_TIME="08:00"
 
 # Expose web port
 EXPOSE 8080

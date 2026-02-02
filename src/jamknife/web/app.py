@@ -68,6 +68,12 @@ async def lifespan(app: FastAPI):
     config.data_dir.mkdir(parents=True, exist_ok=True)
     _session_factory = init_database(config.db_path)
 
+    # Run database migrations
+    from jamknife.migrations import ALL_MIGRATIONS, run_migrations
+
+    with _session_factory() as session:
+        run_migrations(session, ALL_MIGRATIONS)
+
     # Initialize sync service
     _sync_service = PlaylistSyncService(config, _session_factory)
 
@@ -103,6 +109,9 @@ class PlaylistResponse(BaseModel):
     created_for: str | None
     is_daily: bool
     is_weekly: bool
+    enabled: bool
+    sync_day: str | None
+    sync_time: str | None
     last_synced_at: datetime | None
     created_at: datetime
 
@@ -163,6 +172,14 @@ class AddPlaylistRequest(BaseModel):
     """Request model for adding a playlist."""
 
     mbid: str
+
+
+class UpdatePlaylistRequest(BaseModel):
+    """Request model for updating a playlist."""
+
+    enabled: bool | None = None
+    sync_day: str | None = None
+    sync_time: str | None = None
 
 
 class SyncJobRequest(BaseModel):
@@ -277,6 +294,91 @@ async def add_playlist(
 
     playlist = sync_service.add_playlist(playlist)
     return PlaylistResponse.model_validate(playlist)
+
+
+@app.patch("/api/playlists/{playlist_id}")
+async def update_playlist(
+    playlist_id: int,
+    request: UpdatePlaylistRequest,
+    session: SessionDep,
+) -> PlaylistResponse:
+    """Update playlist settings (enabled, schedule)."""
+    playlist = session.query(ListenBrainzPlaylist).get(playlist_id)
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist not found")
+
+    if request.enabled is not None:
+        playlist.enabled = request.enabled
+    if request.sync_day is not None:
+        # Validate day of week
+        valid_days = [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday",
+        ]
+        if request.sync_day.lower() not in valid_days:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid sync_day. Must be one of: {', '.join(valid_days)}",
+            )
+        playlist.sync_day = request.sync_day.lower()
+    if request.sync_time is not None:
+        # Validate time format HH:MM
+        try:
+            hour, minute = request.sync_time.split(":")
+            if not (0 <= int(hour) <= 23 and 0 <= int(minute) <= 59):
+                raise ValueError
+        except (ValueError, AttributeError) as e:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid sync_time. Must be in HH:MM format (e.g., 08:00)",
+            ) from e
+        playlist.sync_time = request.sync_time
+
+    session.commit()
+    session.refresh(playlist)
+    return PlaylistResponse.model_validate(playlist)
+
+
+@app.post("/api/playlists/refresh")
+async def refresh_playlists(
+    sync_service: SyncServiceDep,
+    session: SessionDep,
+) -> dict:
+    """Discover and add any new playlists from ListenBrainz."""
+    discovered = sync_service.discover_playlists()
+    added_count = 0
+
+    config = get_config()
+
+    for playlist in discovered:
+        # Set default enabled/schedule based on playlist type and config
+        if playlist.is_daily:
+            playlist.enabled = config.daily_jam_enabled
+            playlist.sync_time = config.daily_jam_time
+        elif playlist.is_weekly:
+            # Determine if it's explore or jam based on name
+            is_explore = (
+                "exploration" in playlist.name.lower()
+                or "explore" in playlist.name.lower()
+            )
+            if is_explore:
+                playlist.enabled = config.weekly_explore_enabled
+                playlist.sync_day = config.weekly_explore_day
+                playlist.sync_time = config.weekly_explore_time
+            else:
+                playlist.enabled = config.weekly_jam_enabled
+                playlist.sync_day = config.weekly_jam_day
+                playlist.sync_time = config.weekly_jam_time
+
+        playlist = sync_service.add_playlist(playlist)
+        added_count += 1
+
+    return {"status": "refreshed", "added": added_count, "discovered": len(discovered)}
 
 
 @app.delete("/api/playlists/{playlist_id}")
@@ -489,6 +591,8 @@ async def playlists_page(request: Request, session: SessionDep):
     if templates is None:
         return HTMLResponse("<h1>Templates not configured</h1>")
 
+    config = get_config()
+
     playlists = (
         session.query(ListenBrainzPlaylist)
         .order_by(ListenBrainzPlaylist.created_at.desc())
@@ -499,6 +603,7 @@ async def playlists_page(request: Request, session: SessionDep):
         "playlists.html",
         {
             "request": request,
+            "config": config,
             "playlists": playlists,
         },
     )
@@ -509,6 +614,8 @@ async def playlist_detail_page(request: Request, playlist_id: int, session: Sess
     """Render the playlist detail page."""
     if templates is None:
         return HTMLResponse("<h1>Templates not configured</h1>")
+
+    config = get_config()
 
     playlist = session.query(ListenBrainzPlaylist).get(playlist_id)
     if not playlist:
@@ -526,6 +633,7 @@ async def playlist_detail_page(request: Request, playlist_id: int, session: Sess
         "playlist_detail.html",
         {
             "request": request,
+            "config": config,
             "playlist": playlist,
             "jobs": jobs,
         },
@@ -538,6 +646,8 @@ async def downloads_page(request: Request, session: SessionDep):
     if templates is None:
         return HTMLResponse("<h1>Templates not configured</h1>")
 
+    config = get_config()
+
     downloads = (
         session.query(AlbumDownload)
         .order_by(AlbumDownload.created_at.desc())
@@ -549,6 +659,7 @@ async def downloads_page(request: Request, session: SessionDep):
         "downloads.html",
         {
             "request": request,
+            "config": config,
             "downloads": downloads,
         },
     )
@@ -560,6 +671,8 @@ async def sync_job_detail_page(request: Request, job_id: int, session: SessionDe
     if templates is None:
         return HTMLResponse("<h1>Templates not configured</h1>")
 
+    config = get_config()
+
     job = session.query(PlaylistSyncJob).get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Sync job not found")
@@ -568,6 +681,7 @@ async def sync_job_detail_page(request: Request, job_id: int, session: SessionDe
         "sync_job_detail.html",
         {
             "request": request,
+            "config": config,
             "job": job,
         },
     )

@@ -1,11 +1,10 @@
 """Tests for client modules."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
-from jamknife.clients.listenbrainz import ListenBrainzClient, Track, Playlist
-from jamknife.clients.yubal import YubalClient, JobStatus
-from jamknife.clients.ytmusic import YTMusicResolver, AlbumInfo
+from jamknife.clients.listenbrainz import ListenBrainzClient
+from jamknife.clients.ytmusic import YTMusicResolver
+from jamknife.clients.yubal import JobStatus, YubalClient
 
 
 class TestListenBrainzClient:
@@ -33,9 +32,7 @@ class TestListenBrainzClient:
         """Test fetching user playlists."""
         mock_response = Mock()
         mock_response.json.return_value = {
-            "playlists": [
-                {"identifier": "https://musicbrainz.org/playlist/test-mbid"}
-            ]
+            "playlists": [{"identifier": "https://musicbrainz.org/playlist/test-mbid"}]
         }
         mock_client = Mock()
         mock_client.get.return_value = mock_response

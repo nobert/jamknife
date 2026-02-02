@@ -68,6 +68,13 @@ class ListenBrainzPlaylist(Base):
     created_for: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_daily: Mapped[bool] = mapped_column(Boolean, default=False)
     is_weekly: Mapped[bool] = mapped_column(Boolean, default=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    sync_day: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )  # Day of week for weekly playlists
+    sync_time: Mapped[str | None] = mapped_column(
+        String(5), nullable=True
+    )  # HH:MM format
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)

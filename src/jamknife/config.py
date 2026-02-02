@@ -48,6 +48,35 @@ class Config:
         default_factory=lambda: int(os.environ.get("WEB_PORT", "8000"))
     )
 
+    # Playlist sync settings
+    daily_jam_enabled: bool = field(
+        default_factory=lambda: os.environ.get("DAILY_JAM_ENABLED", "true").lower()
+        == "true"
+    )
+    daily_jam_time: str = field(
+        default_factory=lambda: os.environ.get("DAILY_JAM_TIME", "08:00")
+    )
+    weekly_jam_enabled: bool = field(
+        default_factory=lambda: os.environ.get("WEEKLY_JAM_ENABLED", "true").lower()
+        == "true"
+    )
+    weekly_jam_day: str = field(
+        default_factory=lambda: os.environ.get("WEEKLY_JAM_DAY", "monday")
+    )
+    weekly_jam_time: str = field(
+        default_factory=lambda: os.environ.get("WEEKLY_JAM_TIME", "08:00")
+    )
+    weekly_explore_enabled: bool = field(
+        default_factory=lambda: os.environ.get("WEEKLY_EXPLORE_ENABLED", "true").lower()
+        == "true"
+    )
+    weekly_explore_day: str = field(
+        default_factory=lambda: os.environ.get("WEEKLY_EXPLORE_DAY", "monday")
+    )
+    weekly_explore_time: str = field(
+        default_factory=lambda: os.environ.get("WEEKLY_EXPLORE_TIME", "08:00")
+    )
+
     @property
     def db_path(self) -> Path:
         """Path to SQLite database file."""
