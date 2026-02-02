@@ -74,6 +74,7 @@ select = [
 ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # do not perform function calls in argument defaults
+    "UP017", # Use datetime.UTC - disabled due to Python 3.12 compatibility issues
 ]
 
 [tool.ruff.lint.isort]

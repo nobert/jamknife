@@ -1,7 +1,7 @@
 """SQLite database models and session management."""
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
 
@@ -70,12 +70,12 @@ class ListenBrainzPlaylist(Base):
     is_weekly: Mapped[bool] = mapped_column(Boolean, default=False)
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(datetime.UTC)
+        DateTime, default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(datetime.UTC),
-        onupdate=lambda: datetime.now(datetime.UTC),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
     # Relationships
@@ -104,7 +104,7 @@ class PlaylistSyncJob(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(datetime.UTC)
+        DateTime, default=lambda: datetime.now(timezone.utc)
     )
 
     # Relationships
@@ -146,7 +146,7 @@ class TrackMatch(Base):
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(datetime.UTC)
+        DateTime, default=lambda: datetime.now(timezone.utc)
     )
 
     # Relationships
@@ -181,7 +181,7 @@ class AlbumDownload(Base):
     queued_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(datetime.UTC)
+        DateTime, default=lambda: datetime.now(timezone.utc)
     )
 
     # Relationships
@@ -204,12 +204,12 @@ class MBIDPlexMapping(Base):
     artist_name: Mapped[str] = mapped_column(String(500), nullable=False)
     album_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(datetime.UTC)
+        DateTime, default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(datetime.UTC),
-        onupdate=lambda: datetime.now(datetime.UTC),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
     )
 
 

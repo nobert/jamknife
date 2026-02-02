@@ -2,7 +2,7 @@
 
 import logging
 from collections.abc import Callable
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -287,7 +287,7 @@ class PlaylistSyncService:
 
                 # Mark as completed
                 self._update_job_status(session, job, SyncStatus.COMPLETED)
-                job.completed_at = datetime.now(datetime.UTC)
+                job.completed_at = datetime.now(timezone.utc)
                 playlist.last_synced_at = datetime.now(datetime.UTC)
                 session.commit()
 
@@ -298,7 +298,7 @@ class PlaylistSyncService:
                 logger.exception("Sync job %d failed", job_id)
                 job.status = SyncStatus.FAILED
                 job.error_message = str(e)
-                job.completed_at = datetime.now(datetime.UTC)
+                job.completed_at = datetime.now(timezone.utc)
                 session.commit()
                 raise
 
@@ -440,7 +440,7 @@ class PlaylistSyncService:
                     job = yubal.create_job(download.ytmusic_album_url)
                     download.yubal_job_id = job.id
                     download.status = DownloadStatus.QUEUED
-                    download.queued_at = datetime.now(datetime.UTC)
+                    download.queued_at = datetime.now(timezone.utc)
                     session.commit()
 
                 except Exception as e:
@@ -470,7 +470,7 @@ class PlaylistSyncService:
 
                         if job.status == YubalJobStatus.COMPLETED:
                             download.status = DownloadStatus.COMPLETED
-                            download.completed_at = datetime.now(datetime.UTC)
+                            download.completed_at = datetime.now(timezone.utc)
                             pending_downloads.remove(download)
                             completed += 1
                         elif job.status == YubalJobStatus.FAILED:
@@ -543,7 +543,7 @@ class PlaylistSyncService:
         """Update job status and started_at timestamp."""
         job.status = status
         if status != SyncStatus.PENDING and not job.started_at:
-            job.started_at = datetime.now(datetime.UTC)
+            job.started_at = datetime.now(timezone.utc)
         session.commit()
 
     def get_sync_jobs(
