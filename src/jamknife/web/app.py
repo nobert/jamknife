@@ -196,14 +196,20 @@ async def get_status(session: SessionDep) -> StatusResponse:
     playlists_count = session.query(ListenBrainzPlaylist).count()
     active_jobs = (
         session.query(PlaylistSyncJob)
-        .filter(PlaylistSyncJob.status.notin_([SyncStatus.COMPLETED, SyncStatus.FAILED]))
+        .filter(
+            PlaylistSyncJob.status.notin_([SyncStatus.COMPLETED, SyncStatus.FAILED])
+        )
         .count()
     )
     pending_downloads = (
         session.query(AlbumDownload)
         .filter(
             AlbumDownload.status.in_(
-                [DownloadStatus.PENDING, DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING]
+                [
+                    DownloadStatus.PENDING,
+                    DownloadStatus.QUEUED,
+                    DownloadStatus.DOWNLOADING,
+                ]
             )
         )
         .count()
@@ -258,9 +264,7 @@ async def add_playlist(
 ) -> PlaylistResponse:
     """Add a discovered playlist to tracking."""
     # Check if already exists
-    existing = (
-        session.query(ListenBrainzPlaylist).filter_by(mbid=request.mbid).first()
-    )
+    existing = session.query(ListenBrainzPlaylist).filter_by(mbid=request.mbid).first()
     if existing:
         return PlaylistResponse.model_validate(existing)
 
@@ -332,7 +336,9 @@ async def create_sync_job(
     active_job = (
         session.query(PlaylistSyncJob)
         .filter_by(playlist_id=request.playlist_id)
-        .filter(PlaylistSyncJob.status.notin_([SyncStatus.COMPLETED, SyncStatus.FAILED]))
+        .filter(
+            PlaylistSyncJob.status.notin_([SyncStatus.COMPLETED, SyncStatus.FAILED])
+        )
         .first()
     )
     if active_job:
@@ -455,7 +461,11 @@ async def index(request: Request, session: SessionDep):
         session.query(AlbumDownload)
         .filter(
             AlbumDownload.status.in_(
-                [DownloadStatus.PENDING, DownloadStatus.QUEUED, DownloadStatus.DOWNLOADING]
+                [
+                    DownloadStatus.PENDING,
+                    DownloadStatus.QUEUED,
+                    DownloadStatus.DOWNLOADING,
+                ]
             )
         )
         .all()
@@ -495,9 +505,7 @@ async def playlists_page(request: Request, session: SessionDep):
 
 
 @app.get("/playlists/{playlist_id}", response_class=HTMLResponse)
-async def playlist_detail_page(
-    request: Request, playlist_id: int, session: SessionDep
-):
+async def playlist_detail_page(request: Request, playlist_id: int, session: SessionDep):
     """Render the playlist detail page."""
     if templates is None:
         return HTMLResponse("<h1>Templates not configured</h1>")

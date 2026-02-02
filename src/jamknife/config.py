@@ -21,9 +21,7 @@ class Config:
     plex_url: str = field(
         default_factory=lambda: os.environ.get("PLEX_URL", "http://localhost:32400")
     )
-    plex_token: str = field(
-        default_factory=lambda: os.environ.get("PLEX_TOKEN", "")
-    )
+    plex_token: str = field(default_factory=lambda: os.environ.get("PLEX_TOKEN", ""))
     plex_music_library: str = field(
         default_factory=lambda: os.environ.get("PLEX_MUSIC_LIBRARY", "Music")
     )
@@ -45,9 +43,7 @@ class Config:
     poll_interval: int = field(
         default_factory=lambda: int(os.environ.get("POLL_INTERVAL", "60"))
     )
-    web_host: str = field(
-        default_factory=lambda: os.environ.get("WEB_HOST", "0.0.0.0")
-    )
+    web_host: str = field(default_factory=lambda: os.environ.get("WEB_HOST", "0.0.0.0"))
     web_port: int = field(
         default_factory=lambda: int(os.environ.get("WEB_PORT", "8000"))
     )

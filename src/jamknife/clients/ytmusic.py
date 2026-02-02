@@ -108,9 +108,9 @@ class YTMusicResolver:
                 result_title = result.get("title", "")
                 result_artists = self._get_artist_names(result)
 
-                if self._names_match(result_title, track_title) and self._artist_matches(
-                    result_artists, artist_name
-                ):
+                if self._names_match(
+                    result_title, track_title
+                ) and self._artist_matches(result_artists, artist_name):
                     # Get album info from the song result
                     album_info = result.get("album")
                     if album_info and album_info.get("id"):
@@ -255,7 +255,11 @@ class YTMusicResolver:
         target_norm = self._normalize_name(target)
         for artist in artists:
             artist_norm = self._normalize_name(artist)
-            if artist_norm == target_norm or artist_norm in target_norm or target_norm in artist_norm:
+            if (
+                artist_norm == target_norm
+                or artist_norm in target_norm
+                or target_norm in artist_norm
+            ):
                 return True
         return False
 

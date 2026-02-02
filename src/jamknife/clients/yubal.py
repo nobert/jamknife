@@ -28,7 +28,12 @@ class JobStatus(StrEnum):
     @property
     def is_active(self) -> bool:
         """Check if the job is currently active."""
-        return self in (self.PENDING, self.FETCHING_INFO, self.DOWNLOADING, self.IMPORTING)
+        return self in (
+            self.PENDING,
+            self.FETCHING_INFO,
+            self.DOWNLOADING,
+            self.IMPORTING,
+        )
 
 
 @dataclass

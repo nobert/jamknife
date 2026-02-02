@@ -65,26 +65,25 @@ class PlaylistSyncService:
                 for pl_data in playlists_data:
                     playlist_info = pl_data.get("playlist", pl_data)
                     identifier = playlist_info.get("identifier", "")
-                    mbid = identifier.split("/")[-1] if "/" in identifier else identifier
+                    mbid = (
+                        identifier.split("/")[-1] if "/" in identifier else identifier
+                    )
 
                     if not mbid:
                         continue
 
                     # Check if already tracked
                     existing = (
-                        session.query(ListenBrainzPlaylist)
-                        .filter_by(mbid=mbid)
-                        .first()
+                        session.query(ListenBrainzPlaylist).filter_by(mbid=mbid).first()
                     )
                     if existing:
                         continue
 
                     # Determine playlist type
                     is_daily = lb.is_daily_jams_playlist(pl_data)
-                    is_weekly = (
-                        lb.is_weekly_jams_playlist(pl_data)
-                        or lb.is_weekly_exploration_playlist(pl_data)
-                    )
+                    is_weekly = lb.is_weekly_jams_playlist(
+                        pl_data
+                    ) or lb.is_weekly_exploration_playlist(pl_data)
 
                     if not (is_daily or is_weekly):
                         continue
@@ -97,9 +96,7 @@ class PlaylistSyncService:
                     playlist = ListenBrainzPlaylist(
                         mbid=mbid,
                         name=playlist_info.get("title", "Unknown Playlist"),
-                        creator=lb_ext.get(
-                            "creator", playlist_info.get("creator", "")
-                        ),
+                        creator=lb_ext.get("creator", playlist_info.get("creator", "")),
                         created_for=lb_ext.get("created_for"),
                         is_daily=is_daily,
                         is_weekly=is_weekly,
@@ -199,7 +196,8 @@ class PlaylistSyncService:
                     progress = 0.10 + (0.30 * (_i / len(lb_playlist.tracks)))
                     if on_progress:
                         on_progress(
-                            f"Matching track {_i+1}/{len(lb_playlist.tracks)}", progress
+                            f"Matching track {_i + 1}/{len(lb_playlist.tracks)}",
+                            progress,
                         )
 
                     track_match = self._match_track(
@@ -233,6 +231,7 @@ class PlaylistSyncService:
 
                     # Wait for library to update (simple delay for now)
                     import time
+
                     time.sleep(10)
 
                     # Re-match previously missing tracks
@@ -376,7 +375,9 @@ class PlaylistSyncService:
             matched_in_plex=False,
         )
 
-        album_info = ytmusic.find_album_for_track(track.title, track.artist, track.album)
+        album_info = ytmusic.find_album_for_track(
+            track.title, track.artist, track.album
+        )
         if album_info:
             track_match.ytmusic_album_id = album_info.album_id
             track_match.ytmusic_album_url = album_info.url
@@ -428,7 +429,7 @@ class PlaylistSyncService:
 
         try:
             # Submit all albums for download
-            for i, download in enumerate(albums_to_download.values()):
+            for _i, download in enumerate(albums_to_download.values()):
                 try:
                     logger.info(
                         "Submitting album for download: %s - %s",
@@ -459,6 +460,7 @@ class PlaylistSyncService:
 
             while pending_downloads:
                 import time
+
                 time.sleep(5)
 
                 for download in pending_downloads[:]:

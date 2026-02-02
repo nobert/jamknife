@@ -60,7 +60,9 @@ class ListenBrainzPlaylist(Base):
     __tablename__ = "listenbrainz_playlists"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    mbid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
+    mbid: Mapped[str] = mapped_column(
+        String(36), unique=True, nullable=False, index=True
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     creator: Mapped[str] = mapped_column(String(255), nullable=False)
     created_for: Mapped[str | None] = mapped_column(String(255), nullable=True)
