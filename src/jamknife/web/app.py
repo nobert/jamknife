@@ -2,17 +2,16 @@
 
 import logging
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from jamknife.config import Config, get_config
+from jamknife.config import get_config
 from jamknife.database import (
     AlbumDownload,
     DownloadStatus,
@@ -107,7 +106,7 @@ class PlaylistResponse(BaseModel):
     last_synced_at: datetime | None
     created_at: datetime
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 
@@ -127,7 +126,7 @@ class SyncJobResponse(BaseModel):
     completed_at: datetime | None
     created_at: datetime
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 
@@ -145,7 +144,7 @@ class AlbumDownloadResponse(BaseModel):
     completed_at: datetime | None
     created_at: datetime
 
-    class Config:
+    class ConfigDict:
         from_attributes = True
 
 
@@ -399,7 +398,7 @@ async def list_downloads(
             download_status = DownloadStatus(status)
             query = query.filter_by(status=download_status)
         except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid status")
+            raise HTTPException(status_code=400, detail="Invalid status") from None
 
     downloads = query.order_by(AlbumDownload.created_at.desc()).limit(limit).all()
 

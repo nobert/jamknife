@@ -1,8 +1,8 @@
 """Playlist sync orchestration service."""
 
 import logging
-from datetime import datetime, timezone
-from typing import Callable
+from collections.abc import Callable
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -288,8 +288,8 @@ class PlaylistSyncService:
 
                 # Mark as completed
                 self._update_job_status(session, job, SyncStatus.COMPLETED)
-                job.completed_at = datetime.now(timezone.utc)
-                playlist.last_synced_at = datetime.now(timezone.utc)
+                job.completed_at = datetime.now(datetime.UTC)
+                playlist.last_synced_at = datetime.now(datetime.UTC)
                 session.commit()
 
                 if on_progress:
@@ -299,9 +299,9 @@ class PlaylistSyncService:
                 logger.exception("Sync job %d failed", job_id)
                 job.status = SyncStatus.FAILED
                 job.error_message = str(e)
-                job.completed_at = datetime.now(timezone.utc)
+                job.completed_at = datetime.now(datetime.UTC)
                 session.commit()
-                raise
+                raise from None
 
             return job
 
@@ -468,7 +468,7 @@ class PlaylistSyncService:
 
                         if job.status == YubalJobStatus.COMPLETED:
                             download.status = DownloadStatus.COMPLETED
-                            download.completed_at = datetime.now(timezone.utc)
+                            download.completed_at = datetime.now(datetime.UTC)
                             pending_downloads.remove(download)
                             completed += 1
                         elif job.status == YubalJobStatus.FAILED:
@@ -541,7 +541,7 @@ class PlaylistSyncService:
         """Update job status and started_at timestamp."""
         job.status = status
         if status != SyncStatus.PENDING and not job.started_at:
-            job.started_at = datetime.now(timezone.utc)
+            job.started_at = datetime.now(datetime.UTC)
         session.commit()
 
     def get_sync_jobs(

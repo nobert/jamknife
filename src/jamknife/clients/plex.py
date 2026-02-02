@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 
-from plexapi.audio import Album, Artist, Track
+from plexapi.audio import Track
 from plexapi.exceptions import NotFound
 from plexapi.playlist import Playlist
 from plexapi.server import PlexServer

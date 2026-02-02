@@ -64,17 +64,17 @@ class ListenBrainzPlaylist(Base):
     mbid: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     creator: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_for: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_for: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_daily: Mapped[bool] = mapped_column(Boolean, default=False)
     is_weekly: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_synced_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime, default=lambda: datetime.now(datetime.UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(datetime.UTC),
+        onupdate=lambda: datetime.now(datetime.UTC),
     )
 
     # Relationships
@@ -95,15 +95,15 @@ class PlaylistSyncJob(Base):
     status: Mapped[SyncStatus] = mapped_column(
         Enum(SyncStatus), default=SyncStatus.PENDING, nullable=False
     )
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     tracks_total: Mapped[int] = mapped_column(Integer, default=0)
     tracks_matched: Mapped[int] = mapped_column(Integer, default=0)
     tracks_missing: Mapped[int] = mapped_column(Integer, default=0)
-    plex_playlist_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    plex_playlist_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime, default=lambda: datetime.now(datetime.UTC)
     )
 
     # Relationships
@@ -128,24 +128,24 @@ class TrackMatch(Base):
     recording_mbid: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
     track_name: Mapped[str] = mapped_column(String(500), nullable=False)
     artist_name: Mapped[str] = mapped_column(String(500), nullable=False)
-    album_name: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
-    release_mbid: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    album_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    release_mbid: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     # YouTube Music resolution
-    ytmusic_album_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    ytmusic_album_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    ytmusic_album_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ytmusic_album_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Plex matching
-    plex_rating_key: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    plex_rating_key: Mapped[str | None] = mapped_column(String(50), nullable=True)
     matched_in_plex: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Download tracking
-    album_download_id: Mapped[Optional[int]] = mapped_column(
+    album_download_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("album_downloads.id"), nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime, default=lambda: datetime.now(datetime.UTC)
     )
 
     # Relationships
@@ -169,18 +169,18 @@ class AlbumDownload(Base):
     artist_name: Mapped[str] = mapped_column(String(500), nullable=False)
 
     # Yubal job tracking
-    yubal_job_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    yubal_job_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[DownloadStatus] = mapped_column(
         Enum(DownloadStatus), default=DownloadStatus.PENDING, nullable=False
     )
     progress: Mapped[float] = mapped_column(Integer, default=0)
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Timestamps
-    queued_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime, default=lambda: datetime.now(datetime.UTC)
     )
 
     # Relationships
@@ -201,14 +201,14 @@ class MBIDPlexMapping(Base):
     plex_rating_key: Mapped[str] = mapped_column(String(50), nullable=False)
     track_title: Mapped[str] = mapped_column(String(500), nullable=False)
     artist_name: Mapped[str] = mapped_column(String(500), nullable=False)
-    album_name: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    album_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=lambda: datetime.now(timezone.utc)
+        DateTime, default=lambda: datetime.now(datetime.UTC)
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(datetime.UTC),
+        onupdate=lambda: datetime.now(datetime.UTC),
     )
 
 
