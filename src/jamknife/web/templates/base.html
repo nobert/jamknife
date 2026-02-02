@@ -11,7 +11,25 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#6366f1',
+                        primary: '#268bd2',
+                        'solarized': {
+                            'base03': '#002b36',
+                            'base02': '#073642',
+                            'base01': '#586e75',
+                            'base00': '#657b83',
+                            'base0': '#839496',
+                            'base1': '#93a1a1',
+                            'base2': '#eee8d5',
+                            'base3': '#fdf6e3',
+                            'yellow': '#b58900',
+                            'orange': '#cb4b16',
+                            'red': '#dc322f',
+                            'magenta': '#d33682',
+                            'violet': '#6c71c4',
+                            'blue': '#268bd2',
+                            'cyan': '#2aa198',
+                            'green': '#859900',
+                        }
                     }
                 }
             }
@@ -19,11 +37,12 @@
     </script>
     <style>
         [x-cloak] { display: none !important; }
+        body { background-color: #002b36; }
     </style>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
-<body class="bg-gray-50 dark:bg-gray-900 min-h-screen">
-    <nav class="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+<body class="bg-solarized-base03 min-h-screen text-solarized-base0">
+    <nav class="bg-solarized-base02 shadow-sm border-b border-solarized-base01">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16">
                 <div class="flex items-center">
@@ -31,19 +50,19 @@
                         <span class="text-2xl font-bold text-primary">Jamknife</span>
                     </a>
                     <div class="hidden sm:ml-10 sm:flex sm:space-x-8">
-                        <a href="/" class="{% if request.url.path == '/' %}border-primary text-gray-900 dark:text-white{% else %}border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <a href="/" class="{% if request.url.path == '/' %}border-primary text-solarized-base1{% else %}border-transparent text-solarized-base0 hover:text-solarized-base1{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Dashboard
                         </a>
-                        <a href="/playlists" class="{% if '/playlists' in request.url.path %}border-primary text-gray-900 dark:text-white{% else %}border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <a href="/playlists" class="{% if '/playlists' in request.url.path %}border-primary text-solarized-base1{% else %}border-transparent text-solarized-base0 hover:text-solarized-base1{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Playlists
                         </a>
-                        <a href="/downloads" class="{% if '/downloads' in request.url.path %}border-primary text-gray-900 dark:text-white{% else %}border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                        <a href="/downloads" class="{% if '/downloads' in request.url.path %}border-primary text-solarized-base1{% else %}border-transparent text-solarized-base0 hover:text-solarized-base1{% endif %} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                             Downloads
                         </a>
                     </div>
                 </div>
                 <div class="flex items-center">
-                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                    <span class="text-sm text-solarized-base0">
                         {{ config.listenbrainz_username }}
                     </span>
                 </div>
@@ -55,9 +74,9 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="border-t border-gray-200 dark:border-gray-700 mt-8">
+    <footer class="border-t border-solarized-base01 mt-8">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <p class="text-center text-sm text-gray-500 dark:text-gray-400">
+            <p class="text-center text-sm text-solarized-base01">
                 Jamknife - ListenBrainz to Plex playlist sync
             </p>
         </div>

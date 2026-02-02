@@ -7,64 +7,64 @@
     <!-- Header -->
     <div>
         <nav class="text-sm mb-2">
-            <a href="/playlists" class="text-gray-500 dark:text-gray-400 hover:text-primary">Playlists</a>
+            <a href="/playlists" class="text-solarized-base01 hover:text-primary">Playlists</a>
             <span class="mx-2 text-gray-400">/</span>
-            <a href="/playlists/{{ job.playlist_id }}" class="text-gray-500 dark:text-gray-400 hover:text-primary">{{ job.playlist.name }}</a>
+            <a href="/playlists/{{ job.playlist_id }}" class="text-solarized-base01 hover:text-primary">{{ job.playlist.name }}</a>
             <span class="mx-2 text-gray-400">/</span>
-            <span class="text-gray-900 dark:text-white">Sync Job #{{ job.id }}</span>
+            <span class="text-solarized-base1">Sync Job #{{ job.id }}</span>
         </nav>
         <div class="flex items-center space-x-4">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ job.playlist.name }}</h1>
+            <h1 class="text-2xl font-bold text-solarized-base1">{{ job.playlist.name }}</h1>
             <span x-text="statusBadge" :class="statusClass"></span>
         </div>
     </div>
 
     <!-- Progress -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6" x-show="!isFinished">
+    <div class="bg-solarized-base02 rounded-lg shadow p-6" x-show="!isFinished">
         <div class="flex justify-between mb-2">
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300" x-text="statusText"></span>
-            <span class="text-sm text-gray-500 dark:text-gray-400" x-text="progressPercent + '%'"></span>
+            <span class="text-sm font-medium text-solarized-base0" x-text="statusText"></span>
+            <span class="text-sm text-solarized-base01" x-text="progressPercent + '%'"></span>
         </div>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+        <div class="w-full bg-solarized-base01 bg-opacity-30 rounded-full h-3">
             <div class="bg-primary h-3 rounded-full transition-all duration-500" :style="'width: ' + progressPercent + '%'"></div>
         </div>
     </div>
 
     <!-- Stats Grid -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Total Tracks</p>
-            <p class="text-2xl font-semibold text-gray-900 dark:text-white" x-text="job.tracks_total"></p>
+        <div class="bg-solarized-base02 rounded-lg shadow p-4">
+            <p class="text-sm text-solarized-base01">Total Tracks</p>
+            <p class="text-2xl font-semibold text-solarized-base1" x-text="job.tracks_total"></p>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Matched in Plex</p>
+        <div class="bg-solarized-base02 rounded-lg shadow p-4">
+            <p class="text-sm text-solarized-base01">Matched in Plex</p>
             <p class="text-2xl font-semibold text-green-600" x-text="job.tracks_matched"></p>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Missing</p>
+        <div class="bg-solarized-base02 rounded-lg shadow p-4">
+            <p class="text-sm text-solarized-base01">Missing</p>
             <p class="text-2xl font-semibold text-yellow-600" x-text="job.tracks_missing"></p>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <p class="text-sm text-gray-500 dark:text-gray-400">Match Rate</p>
-            <p class="text-2xl font-semibold text-gray-900 dark:text-white" x-text="matchRate + '%'"></p>
+        <div class="bg-solarized-base02 rounded-lg shadow p-4">
+            <p class="text-sm text-solarized-base01">Match Rate</p>
+            <p class="text-2xl font-semibold text-solarized-base1" x-text="matchRate + '%'"></p>
         </div>
     </div>
 
     <!-- Timestamps -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Timeline</h2>
+    <div class="bg-solarized-base02 rounded-lg shadow p-6">
+        <h2 class="text-lg font-semibold text-solarized-base1 mb-4">Timeline</h2>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
-                <p class="text-gray-500 dark:text-gray-400">Created</p>
-                <p class="font-medium text-gray-900 dark:text-white">{{ job_timestamps.created_at }}</p>
+                <p class="text-solarized-base01">Created</p>
+                <p class="font-medium text-solarized-base1">{{ job_timestamps.created_at }}</p>
             </div>
             <div>
-                <p class="text-gray-500 dark:text-gray-400">Started</p>
-                <p class="font-medium text-gray-900 dark:text-white">{{ job_timestamps.started_at }}</p>
+                <p class="text-solarized-base01">Started</p>
+                <p class="font-medium text-solarized-base1">{{ job_timestamps.started_at }}</p>
             </div>
             <div>
-                <p class="text-gray-500 dark:text-gray-400">Completed</p>
-                <p class="font-medium text-gray-900 dark:text-white">{{ job_timestamps.completed_at }}</p>
+                <p class="text-solarized-base01">Completed</p>
+                <p class="font-medium text-solarized-base1">{{ job_timestamps.completed_at }}</p>
             </div>
         </div>
     </div>
@@ -84,47 +84,47 @@
 
     <!-- Track Matches -->
     {% if job.track_matches %}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Track Matches</h2>
+    <div class="bg-solarized-base02 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-solarized-base01">
+            <h2 class="text-lg font-semibold text-solarized-base1">Track Matches</h2>
         </div>
         <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-900">
+            <table class="min-w-full divide-y divide-solarized-base01">
+                <thead class="bg-solarized-base03">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">#</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Track</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Artist</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Album</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">#</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Track</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Artist</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Album</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Status</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody class="bg-solarized-base02 divide-y divide-solarized-base01">
                     {% for match in job.track_matches|sort(attribute='position') %}
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-solarized-base01">
                             {{ match.position + 1 }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ match.track_name }}</p>
+                            <p class="text-sm font-medium text-solarized-base1">{{ match.track_name }}</p>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-solarized-base01">
                             {{ match.artist_name }}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-solarized-base01">
                             {{ match.album_name or '-' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             {% if match.matched_in_plex %}
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-solarized-green bg-opacity-20 text-solarized-green">
                                 In Plex
                             </span>
                             {% elif match.album_download %}
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-solarized-blue bg-opacity-20 text-solarized-blue">
                                 {{ match.album_download.status.value|replace('_', ' ')|title }}
                             </span>
                             {% elif match.ytmusic_album_url %}
-                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-solarized-yellow bg-opacity-20 text-solarized-yellow">
                                 Pending Download
                             </span>
                             {% else %}
@@ -166,11 +166,11 @@ function syncJobDetail() {
         get statusClass() {
             const status = this.job.status || 'pending';
             if (status === 'completed') {
-                return 'px-3 py-1 text-sm font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+                return 'px-3 py-1 text-sm font-medium rounded-full bg-solarized-green bg-opacity-20 text-solarized-green';
             } else if (status === 'failed') {
-                return 'px-3 py-1 text-sm font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+                return 'px-3 py-1 text-sm font-medium rounded-full bg-solarized-red bg-opacity-20 text-solarized-red';
             } else {
-                return 'px-3 py-1 text-sm font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+                return 'px-3 py-1 text-sm font-medium rounded-full bg-solarized-yellow bg-opacity-20 text-solarized-yellow';
             }
         },
         

@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Album Downloads</h1>
+        <h1 class="text-2xl font-bold text-solarized-base1">Album Downloads</h1>
         <button 
             onclick="cleanOrphanedDownloads()"
             class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
@@ -17,66 +17,66 @@
 
     <!-- Filters -->
     <div class="flex space-x-4">
-        <a href="/downloads" class="{% if not request.query_params.get('status') %}bg-primary text-white{% else %}bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
+        <a href="/downloads" class="{% if not request.query_params.get('status') %}bg-primary text-white{% else %}bg-solarized-base02 text-solarized-base0{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
             All
         </a>
-        <a href="/downloads?status=pending" class="{% if request.query_params.get('status') == 'pending' %}bg-primary text-white{% else %}bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
+        <a href="/downloads?status=pending" class="{% if request.query_params.get('status') == 'pending' %}bg-primary text-white{% else %}bg-solarized-base02 text-solarized-base0{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
             Pending
         </a>
-        <a href="/downloads?status=downloading" class="{% if request.query_params.get('status') == 'downloading' %}bg-primary text-white{% else %}bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
+        <a href="/downloads?status=downloading" class="{% if request.query_params.get('status') == 'downloading' %}bg-primary text-white{% else %}bg-solarized-base02 text-solarized-base0{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
             Downloading
         </a>
-        <a href="/downloads?status=completed" class="{% if request.query_params.get('status') == 'completed' %}bg-primary text-white{% else %}bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
+        <a href="/downloads?status=completed" class="{% if request.query_params.get('status') == 'completed' %}bg-primary text-white{% else %}bg-solarized-base02 text-solarized-base0{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
             Completed
         </a>
-        <a href="/downloads?status=failed" class="{% if request.query_params.get('status') == 'failed' %}bg-primary text-white{% else %}bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
+        <a href="/downloads?status=failed" class="{% if request.query_params.get('status') == 'failed' %}bg-primary text-white{% else %}bg-solarized-base02 text-solarized-base0{% endif %} px-4 py-2 rounded-lg text-sm font-medium">
             Failed
         </a>
     </div>
 
     <!-- Downloads Table -->
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-900">
+    <div class="bg-solarized-base02 rounded-lg shadow overflow-hidden">
+        <table class="min-w-full divide-y divide-solarized-base01">
+            <thead class="bg-solarized-base03">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Album</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Artist</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Progress</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Queued</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Album</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Artist</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Progress</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Queued</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-solarized-base01 uppercase tracking-wider">Actions</th>
                 </tr>
             </thead>
-            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            <tbody class="bg-solarized-base02 divide-y divide-solarized-base01">
                 {% for download in downloads %}
                 <tr>
                     <td class="px-6 py-4">
-                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ download.album_name }}</p>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ download.ytmusic_album_id }}</p>
+                        <p class="text-sm font-medium text-solarized-base1">{{ download.album_name }}</p>
+                        <p class="text-xs text-solarized-base01 font-mono">{{ download.ytmusic_album_id }}</p>
                         {% if download.error_message %}
-                        <p class="text-xs text-red-600 dark:text-red-400 mt-1">
+                        <p class="text-xs text-solarized-red mt-1">
                             <span class="font-medium">Error:</span> {{ download.error_message }}
                         </p>
                         {% endif %}
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-solarized-base01">
                         {{ download.artist_name }}
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         {% if download.status.value == 'completed' %}
-                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-solarized-green bg-opacity-20 text-solarized-green">
                             Completed
                         </span>
                         {% elif download.status.value == 'failed' %}
-                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-solarized-red bg-opacity-20 text-solarized-red">
                             Failed
                         </span>
                         {% elif download.status.value == 'downloading' %}
-                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-solarized-blue bg-opacity-20 text-solarized-blue">
                             Downloading
                         </span>
                         {% elif download.status.value == 'queued' %}
-                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-solarized-yellow bg-opacity-20 text-solarized-yellow">
                             Queued
                         </span>
                         {% else %}
@@ -87,13 +87,13 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
-                            <div class="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2 mr-2">
+                            <div class="w-24 bg-solarized-base01 bg-opacity-30 rounded-full h-2 mr-2">
                                 <div class="bg-primary h-2 rounded-full" style="width: {{ download.progress }}%"></div>
                             </div>
-                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ download.progress|int }}%</span>
+                            <span class="text-xs text-solarized-base01">{{ download.progress|int }}%</span>
                         </div>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-solarized-base01">
                         {% if download.queued_at %}
                         {{ download.queued_at.strftime('%Y-%m-%d %H:%M') }}
                         {% else %}
@@ -115,7 +115,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                    <td colspan="6" class="px-6 py-8 text-center text-solarized-base01">
                         No downloads found
                     </td>
                 </tr>
