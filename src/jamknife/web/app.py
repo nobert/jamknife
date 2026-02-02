@@ -685,7 +685,7 @@ async def sync_job_detail_page(request: Request, job_id: int, session: SessionDe
         "error_message": job.error_message,
         "tracks_total": job.tracks_total,
         "tracks_matched": job.tracks_matched,
-        "tracks_downloaded": job.tracks_downloaded,
+        "tracks_missing": job.tracks_missing,
         "started_at": job.started_at.isoformat() if job.started_at else None,
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
     }
