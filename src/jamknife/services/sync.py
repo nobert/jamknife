@@ -186,6 +186,7 @@ class PlaylistSyncService:
                     self._config.plex_url,
                     self._config.plex_token,
                     self._config.plex_music_library,
+                    self._config.plex_verify_ssl,
                 )
                 ytmusic = YTMusicResolver()
 

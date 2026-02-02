@@ -25,24 +25,44 @@ class PlexTrackMatch:
 class PlexClient:
     """Client for Plex Media Server operations."""
 
-    def __init__(self, base_url: str, token: str, music_library: str = "Music"):
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        music_library: str = "Music",
+        verify_ssl: bool = True,
+    ):
         """Initialize the Plex client.
 
         Args:
             base_url: Plex server URL (e.g., http://localhost:32400).
             token: Plex authentication token.
             music_library: Name of the music library section.
+            verify_ssl: Whether to verify SSL certificates (default: True).
         """
         self._base_url = base_url
         self._token = token
         self._music_library_name = music_library
+        self._verify_ssl = verify_ssl
         self._server: PlexServer | None = None
         self._music_section = None
 
     def _connect(self) -> PlexServer:
         """Establish connection to Plex server."""
         if self._server is None:
-            self._server = PlexServer(self._base_url, self._token)
+            session = None
+            if not self._verify_ssl:
+                import requests
+                from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
+                requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+                session = requests.Session()
+                session.verify = False
+                logger.warning(
+                    "SSL certificate verification disabled for Plex connection"
+                )
+
+            self._server = PlexServer(self._base_url, self._token, session=session)
             logger.info("Connected to Plex server: %s", self._server.friendlyName)
         return self._server
 

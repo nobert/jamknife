@@ -25,6 +25,10 @@ class Config:
     plex_music_library: str = field(
         default_factory=lambda: os.environ.get("PLEX_MUSIC_LIBRARY", "Music")
     )
+    plex_verify_ssl: bool = field(
+        default_factory=lambda: os.environ.get("PLEX_VERIFY_SSL", "true").lower()
+        == "true"
+    )
 
     # Yubal settings
     yubal_url: str = field(

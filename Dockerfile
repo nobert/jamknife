@@ -43,6 +43,7 @@ ENV LISTENBRAINZ_USERNAME="" \
     PLEX_URL="" \
     PLEX_TOKEN="" \
     PLEX_MUSIC_LIBRARY="Music" \
+    PLEX_VERIFY_SSL="true" \
     YUBAL_URL="http://yubal:8000" \
     DATA_DIR="/data" \
     DOWNLOADS_DIR="/downloads" \
