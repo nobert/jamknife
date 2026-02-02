@@ -1,0 +1,106 @@
+stages:
+  - quality
+  - build
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  IMAGE_NAME: $CI_REGISTRY_IMAGE
+
+# Cache configuration for Python dependencies
+.python-cache: &python-cache
+  cache:
+    key:
+      files:
+        - pyproject.toml
+    paths:
+      - .cache/pip
+      - .venv/
+    policy: pull-push
+
+# Quality checks - run in parallel
+quality:
+  image: python:3.11-slim
+  stage: quality
+  <<: *python-cache
+  before_script:
+    - python -m venv .venv
+    - source .venv/bin/activate
+    - pip install --upgrade pip --quiet
+    - pip install -e ".[dev]" --quiet
+  script:
+    # Run all checks in sequence but in a single job
+    - echo "Running ruff lint..."
+    - ruff check src/
+    - echo "Running ruff format..."
+    - ruff format --check src/
+    - echo "Running pytest..."
+    - pytest --cov=jamknife --cov-report=term-missing --junitxml=report.xml -q
+    - echo "Running security scan..."
+    - pip install bandit pip-audit --quiet
+    - bandit -r src/ -ll -q
+    - pip-audit --desc || true
+  coverage: '/TOTAL.*\s+(\d+%)/'
+  artifacts:
+    reports:
+      junit: report.xml
+    when: always
+    expire_in: 1 week
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# Build and push with Kaniko
+build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.0-debug
+    entrypoint: [""]
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - |
+      /kaniko/executor \
+        --context "${CI_PROJECT_DIR}" \
+        --dockerfile "${CI_PROJECT_DIR}/Dockerfile" \
+        --destination "${IMAGE_NAME}:${CI_COMMIT_SHA}" \
+        --destination "${IMAGE_NAME}:${CI_COMMIT_REF_SLUG}" \
+        --cache=true \
+        --cache-ttl=168h \
+        --snapshot-mode=redo \
+        --compressed-caching=false
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# Tag latest on default branch
+tag-latest:
+  stage: build
+  image:
+    name: gcr.io/go-containerregistry/crane:debug
+    entrypoint: [""]
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - crane auth login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - crane tag $IMAGE_NAME:$CI_COMMIT_SHA latest
+  needs:
+    - build
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Tag version on tags
+tag-version:
+  stage: build
+  image:
+    name: gcr.io/go-containerregistry/crane:debug
+    entrypoint: [""]
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - crane auth login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - crane tag $IMAGE_NAME:$CI_COMMIT_SHA $CI_COMMIT_TAG
+  needs:
+    - build
+  rules:
+    - if: $CI_COMMIT_TAG

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}{{ playlist.name }} - Jamknife{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="{ syncing: false }">
+    <!-- Header -->
+    <div class="flex justify-between items-start">
+        <div>
+            <nav class="text-sm mb-2">
+                <a href="/playlists" class="text-gray-500 dark:text-gray-400 hover:text-primary">Playlists</a>
+                <span class="mx-2 text-gray-400">/</span>
+                <span class="text-gray-900 dark:text-white">{{ playlist.name }}</span>
+            </nav>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ playlist.name }}</h1>
+            <p class="text-gray-500 dark:text-gray-400 mt-1">
+                Created by {{ playlist.creator }}
+                {% if playlist.created_for %}for {{ playlist.created_for }}{% endif %}
+            </p>
+        </div>
+        <button @click="syncPlaylist()" 
+                :disabled="syncing"
+                class="inline-flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+            <svg x-show="!syncing" class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            <svg x-show="syncing" class="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span x-text="syncing ? 'Starting...' : 'Sync Now'"></span>
+        </button>
+    </div>
+
+    <!-- Playlist Info -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Type</p>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                {% if playlist.is_daily %}Daily Jams{% elif playlist.is_weekly %}Weekly{% else %}Custom{% endif %}
+            </p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">MBID</p>
+            <p class="text-sm font-mono text-gray-900 dark:text-white truncate" title="{{ playlist.mbid }}">
+                {{ playlist.mbid }}
+            </p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Last Synced</p>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">
+                {% if playlist.last_synced_at %}
+                {{ playlist.last_synced_at.strftime('%Y-%m-%d %H:%M') }}
+                {% else %}
+                Never
+                {% endif %}
+            </p>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <p class="text-sm text-gray-500 dark:text-gray-400">Total Sync Jobs</p>
+            <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ jobs|length }}</p>
+        </div>
+    </div>
+
+    <!-- Sync History -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Sync History</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tracks</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Started</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Completed</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {% for job in jobs %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if job.status.value == 'completed' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                Completed
+                            </span>
+                            {% elif job.status.value == 'failed' %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                                Failed
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                {{ job.status.value|replace('_', ' ')|title }}
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                            <span class="text-green-600">{{ job.tracks_matched }}</span> / 
+                            <span>{{ job.tracks_total }}</span>
+                            {% if job.tracks_missing > 0 %}
+                            <span class="text-gray-500 dark:text-gray-400">({{ job.tracks_missing }} missing)</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {% if job.started_at %}
+                            {{ job.started_at.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                            {% if job.completed_at %}
+                            {{ job.completed_at.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <a href="/sync-jobs/{{ job.id }}" class="text-primary hover:underline">
+                                View Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                            No sync jobs yet. Click "Sync Now" to start syncing this playlist.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function syncPlaylist() {
+    const btn = document.querySelector('[\\@click="syncPlaylist()"]');
+    try {
+        const response = await fetch('/api/sync-jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ playlist_id: {{ playlist.id }} })
+        });
+        if (response.ok) {
+            const data = await response.json();
+            window.location.href = '/sync-jobs/' + data.id;
+        } else if (response.status === 409) {
+            alert('A sync job is already running for this playlist');
+        } else {
+            alert('Failed to start sync');
+        }
+    } catch (error) {
+        console.error('Failed to sync playlist:', error);
+        alert('Failed to start sync');
+    }
+}
+</script>
+{% endblock %}
