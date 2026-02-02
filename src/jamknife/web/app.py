@@ -153,13 +153,36 @@ async def update_download_statuses_loop(config):
                 # Update each download based on job status
                 updated_count = 0
                 for download in active_downloads:
+                    # Check for timeout (2 hours in downloading state)
+                    if download.status == DownloadStatus.DOWNLOADING:
+                        time_downloading = (
+                            datetime.now(timezone.utc) - download.queued_at
+                        ).total_seconds()
+                        if time_downloading > 7200:  # 2 hours
+                            logger.warning(
+                                "Download %d timed out after %d seconds",
+                                download.id,
+                                time_downloading,
+                            )
+                            download.status = DownloadStatus.FAILED
+                            download.error_message = f"Download timed out after {time_downloading / 3600:.1f} hours"
+                            updated_count += 1
+                            continue
+
                     job = jobs_by_id.get(download.yubal_job_id)
                     if not job:
-                        logger.warning(
-                            "Job %s not found for download %s",
-                            download.yubal_job_id,
-                            download.id,
-                        )
+                        # Job not found in Yubal - might have been deleted or very old
+                        if download.status == DownloadStatus.DOWNLOADING:
+                            logger.warning(
+                                "Job %s not found for download %s - marking as failed",
+                                download.yubal_job_id,
+                                download.id,
+                            )
+                            download.status = DownloadStatus.FAILED
+                            download.error_message = (
+                                "Job not found in Yubal (may have been cleaned up)"
+                            )
+                            updated_count += 1
                         continue
 
                     # Update progress
@@ -658,6 +681,57 @@ async def get_sync_job(job_id: int, session: SessionDep) -> SyncJobResponse:
         completed_at=job.completed_at,
         created_at=job.created_at,
     )
+
+
+@app.post("/api/sync-jobs/{job_id}/cancel")
+async def cancel_sync_job(job_id: int, session: SessionDep):
+    """Cancel a running sync job."""
+    job = session.query(PlaylistSyncJob).filter_by(id=job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Sync job not found")
+
+    if job.status in [SyncStatus.COMPLETED, SyncStatus.FAILED]:
+        raise HTTPException(
+            status_code=400, detail="Cannot cancel completed or failed job"
+        )
+
+    job.status = SyncStatus.FAILED
+    job.error_message = "Cancelled by user"
+    job.completed_at = datetime.now(timezone.utc)
+    session.commit()
+
+    return {"message": "Sync job cancelled", "job_id": job_id}
+
+
+@app.post("/api/sync-jobs/{job_id}/complete")
+async def force_complete_sync_job(
+    job_id: int, session: SessionDep, sync_service: SyncServiceDep
+):
+    """Force complete a stuck sync job by creating playlist with available tracks."""
+    job = session.query(PlaylistSyncJob).filter_by(id=job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Sync job not found")
+
+    if job.status in [SyncStatus.COMPLETED, SyncStatus.FAILED]:
+        raise HTTPException(status_code=400, detail="Job already completed or failed")
+
+    try:
+        # If stuck in DOWNLOADING, try to resume
+        if job.status == SyncStatus.DOWNLOADING:
+            sync_service.resume_sync_job_after_downloads(job_id)
+        else:
+            # For other states, mark as failed
+            job.status = SyncStatus.FAILED
+            job.error_message = "Force completed by user"
+            job.completed_at = datetime.now(timezone.utc)
+            session.commit()
+
+        return {"message": "Sync job completed", "job_id": job_id}
+    except Exception as e:
+        logger.exception("Failed to force complete job %d", job_id)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to complete job: {str(e)}"
+        ) from e
 
 
 @app.get("/api/downloads")

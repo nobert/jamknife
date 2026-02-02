@@ -13,9 +13,25 @@
             <span class="mx-2 text-gray-400">/</span>
             <span class="text-solarized-base1">Sync Job #{{ job.id }}</span>
         </nav>
-        <div class="flex items-center space-x-4">
-            <h1 class="text-2xl font-bold text-solarized-base1">{{ job.playlist.name }}</h1>
-            <span x-text="statusBadge" :class="statusClass"></span>
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <h1 class="text-2xl font-bold text-solarized-base1">{{ job.playlist.name }}</h1>
+                <span x-text="statusBadge" :class="statusClass"></span>
+            </div>
+            <div class="flex space-x-2" x-show="!isFinished">
+                <button 
+                    @click="forceComplete()"
+                    class="bg-solarized-yellow hover:bg-solarized-yellow/80 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                >
+                    Force Complete
+                </button>
+                <button 
+                    @click="cancelJob()"
+                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+                >
+                    Cancel
+                </button>
+            </div>
         </div>
     </div>
 
@@ -217,6 +233,52 @@ function syncJobDetail() {
             if (this.pollInterval) {
                 clearInterval(this.pollInterval);
                 this.pollInterval = null;
+            }
+        },
+
+        async cancelJob() {
+            if (!confirm('Are you sure you want to cancel this sync job?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/sync-jobs/{{ job.id }}/cancel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Failed to cancel job: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error cancelling job:', error);
+                alert('Error cancelling job: ' + error.message);
+            }
+        },
+
+        async forceComplete() {
+            if (!confirm('Force complete this sync job? This will create the playlist with whatever tracks are available.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/sync-jobs/{{ job.id }}/complete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    alert('Failed to complete job: ' + (error.detail || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Error completing job:', error);
+                alert('Error completing job: ' + error.message);
             }
         }
     }
