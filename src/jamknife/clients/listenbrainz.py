@@ -143,6 +143,13 @@ class ListenBrainzClient:
         if not identifier:
             return None
 
+        # Handle identifier as list or string (API inconsistency)
+        if isinstance(identifier, list):
+            identifier = identifier[0] if identifier else ""
+
+        if not identifier:
+            return None
+
         # Extract MBID from identifier URL
         # Format: https://musicbrainz.org/recording/<mbid>
         recording_mbid = identifier.split("/")[-1] if "/" in identifier else identifier

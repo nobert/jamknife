@@ -677,11 +677,24 @@ async def sync_job_detail_page(request: Request, job_id: int, session: SessionDe
     if not job:
         raise HTTPException(status_code=404, detail="Sync job not found")
 
+    # Convert job to dict for JSON serialization in template
+    job_dict = {
+        "id": job.id,
+        "playlist_id": job.playlist_id,
+        "status": job.status.value,
+        "error_message": job.error_message,
+        "tracks_total": job.tracks_total,
+        "tracks_matched": job.tracks_matched,
+        "tracks_downloaded": job.tracks_downloaded,
+        "started_at": job.started_at.isoformat() if job.started_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+    }
+
     return templates.TemplateResponse(
         "sync_job_detail.html",
         {
             "request": request,
             "config": config,
-            "job": job,
+            "job": job_dict,
         },
     )
