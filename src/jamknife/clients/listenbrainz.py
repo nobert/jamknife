@@ -39,7 +39,9 @@ class Playlist:
 class ListenBrainzClient:
     """Client for the ListenBrainz API."""
 
-    def __init__(self, token: str | None = None, timeout: float = 30.0, max_retries: int = 3):
+    def __init__(
+        self, token: str | None = None, timeout: float = 30.0, max_retries: int = 3
+    ):
         """Initialize the client.
 
         Args:
@@ -66,7 +68,9 @@ class ListenBrainzClient:
         last_error = None
         for attempt in range(self._max_retries):
             try:
-                logger.debug(f"ListenBrainz API request (attempt {attempt + 1}/{self._max_retries}): GET {url}")
+                logger.debug(
+                    f"ListenBrainz API request (attempt {attempt + 1}/{self._max_retries}): GET {url}"
+                )
                 response = self._client.get(url, headers=self._headers(), params=params)
                 response.raise_for_status()
                 return response.json()
@@ -77,7 +81,7 @@ class ListenBrainzClient:
                     f"for {url}: {e}"
                 )
                 if attempt < self._max_retries - 1:
-                    delay = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    delay = 2**attempt  # Exponential backoff: 1s, 2s, 4s
                     logger.info(f"Retrying in {delay}s...")
                     time.sleep(delay)
             except httpx.TimeoutException as e:
@@ -87,12 +91,14 @@ class ListenBrainzClient:
                     f"for {url}: {e}"
                 )
                 if attempt < self._max_retries - 1:
-                    delay = 2 ** attempt
+                    delay = 2**attempt
                     logger.info(f"Retrying in {delay}s...")
                     time.sleep(delay)
             except httpx.HTTPStatusError as e:
                 # Don't retry on HTTP errors (4xx, 5xx)
-                logger.error(f"HTTP error for {url}: {e.response.status_code} {e.response.text}")
+                logger.error(
+                    f"HTTP error for {url}: {e.response.status_code} {e.response.text}"
+                )
                 raise
 
         # All retries exhausted
