@@ -516,8 +516,34 @@ class PlaylistSyncService:
         yubal = YubalClient(self._config.yubal_url)
 
         try:
-            # Submit all albums for download
+            # Check current queue size (Yubal max is 20, keep buffer)
+            try:
+                all_jobs = yubal.list_jobs()
+                active_jobs = [j for j in all_jobs if j.status.is_active]
+                current_queue_size = len(active_jobs)
+                max_queue_size = 18  # Leave buffer for other operations
+                available_slots = max(0, max_queue_size - current_queue_size)
+
+                logger.info(
+                    "Yubal queue: %d active jobs, %d slots available",
+                    current_queue_size,
+                    available_slots,
+                )
+            except Exception as e:
+                logger.warning("Failed to check Yubal queue size: %s", e)
+                available_slots = 5  # Conservative default
+
+            # Submit albums for download (respecting queue limit)
+            submitted = 0
             for _i, download in enumerate(albums_to_download.values()):
+                # Stop if queue is full
+                if submitted >= available_slots:
+                    logger.info(
+                        "Reached Yubal queue limit, leaving %d downloads pending",
+                        len(albums_to_download) - submitted,
+                    )
+                    break
+
                 try:
                     logger.info(
                         "Submitting album for download: %s - %s",
@@ -530,13 +556,55 @@ class PlaylistSyncService:
                     download.status = DownloadStatus.QUEUED
                     download.queued_at = datetime.now(timezone.utc)
                     session.commit()
+                    submitted += 1
 
                 except Exception as e:
-                    logger.error(
-                        "Failed to submit album %s: %s", download.album_name, e
-                    )
-                    download.status = DownloadStatus.FAILED
-                    download.error_message = str(e)
+                    error_str = str(e)
+
+                    # Handle 409 Conflict - queue full or duplicate
+                    if "409" in error_str or "Conflict" in error_str:
+                        # Check if there's already a job for this URL
+                        try:
+                            all_jobs = yubal.list_jobs()
+                            existing_job = next(
+                                (
+                                    j
+                                    for j in all_jobs
+                                    if j.url == download.ytmusic_album_url
+                                ),
+                                None,
+                            )
+                            if existing_job:
+                                logger.info(
+                                    "Found existing job for %s, linking to job %s",
+                                    download.album_name,
+                                    existing_job.id,
+                                )
+                                download.yubal_job_id = existing_job.id
+                                download.status = DownloadStatus.QUEUED
+                                download.queued_at = datetime.now(timezone.utc)
+                                session.commit()
+                                submitted += 1
+                                continue
+                        except Exception as list_err:
+                            logger.warning(
+                                "Failed to check for existing jobs: %s", list_err
+                            )
+
+                        # Queue is full - leave in PENDING for background task
+                        logger.warning(
+                            "Yubal queue full for %s, leaving pending",
+                            download.album_name,
+                        )
+                        # Leave download in PENDING state, don't mark as failed
+                        break  # Stop trying to submit more
+                    else:
+                        logger.error(
+                            "Failed to submit album %s: %s", download.album_name, e
+                        )
+                        download.status = DownloadStatus.FAILED
+                        download.error_message = str(e)
+
                     session.commit()
 
             # Report progress for submitted downloads

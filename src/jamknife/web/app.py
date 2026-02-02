@@ -53,6 +53,91 @@ SessionDep = Annotated[Session, Depends(get_session)]
 SyncServiceDep = Annotated[PlaylistSyncService, Depends(get_sync_service)]
 
 
+async def submit_pending_downloads(session: Session, config):
+    """Submit pending downloads if there's space in the Yubal queue."""
+
+    # Get pending downloads
+    pending_downloads = (
+        session.query(AlbumDownload)
+        .filter(AlbumDownload.status == DownloadStatus.PENDING)
+        .filter(AlbumDownload.yubal_job_id.is_(None))
+        .order_by(AlbumDownload.created_at)
+        .limit(20)  # Limit to avoid overwhelming
+        .all()
+    )
+
+    if not pending_downloads:
+        return
+
+    # Check Yubal queue space
+    yubal = YubalClient(config.yubal_url)
+    try:
+        all_jobs = yubal.list_jobs()
+        active_jobs = [j for j in all_jobs if j.status.is_active]
+        current_queue_size = len(active_jobs)
+        max_queue_size = 18  # Leave buffer
+        available_slots = max(0, max_queue_size - current_queue_size)
+
+        if available_slots == 0:
+            return
+
+        logger.info(
+            "Submitting pending downloads: %d pending, %d slots available",
+            len(pending_downloads),
+            available_slots,
+        )
+
+        submitted = 0
+        for download in pending_downloads[:available_slots]:
+            try:
+                # Check if job already exists for this URL
+                existing_job = next(
+                    (j for j in all_jobs if j.url == download.ytmusic_album_url),
+                    None,
+                )
+                if existing_job:
+                    logger.info(
+                        "Found existing job %s for pending download %d",
+                        existing_job.id,
+                        download.id,
+                    )
+                    download.yubal_job_id = existing_job.id
+                    download.status = DownloadStatus.QUEUED
+                    download.queued_at = datetime.now(timezone.utc)
+                    submitted += 1
+                else:
+                    job = yubal.create_job(download.ytmusic_album_url)
+                    download.yubal_job_id = job.id
+                    download.status = DownloadStatus.QUEUED
+                    download.queued_at = datetime.now(timezone.utc)
+                    submitted += 1
+                    logger.info(
+                        "Submitted pending download: %s - %s",
+                        download.artist_name,
+                        download.album_name,
+                    )
+            except Exception as e:
+                if "409" in str(e) or "Conflict" in str(e):
+                    # Queue full, stop trying
+                    logger.info("Yubal queue full, stopping pending submission")
+                    break
+                else:
+                    logger.warning(
+                        "Failed to submit pending download %d: %s", download.id, e
+                    )
+                    download.status = DownloadStatus.FAILED
+                    download.error_message = str(e)
+
+        if submitted > 0:
+            session.commit()
+            logger.info("Submitted %d pending download(s)", submitted)
+
+    except Exception as e:
+        logger.error("Error submitting pending downloads: %s", e)
+    finally:
+        yubal.close()
+
+
 async def check_and_resume_sync_jobs(session: Session):
     """Check for sync jobs with completed downloads and resume them."""
     import asyncio
@@ -210,6 +295,9 @@ async def update_download_statuses_loop(config):
 
                 if updated_count > 0:
                     logger.info("Updated %d download(s) from Yubal", updated_count)
+
+                # Try to submit pending downloads if queue has space
+                await submit_pending_downloads(session, config)
 
                 # Check for sync jobs that can now continue
                 if updated_count > 0 and _sync_service:
@@ -845,12 +933,45 @@ async def retry_download(
                 s.close()
         except Exception as e:
             logger.exception("Failed to retry download %d", download_id)
+
+            # Handle 409 Conflict - check for existing job
+            if "409" in str(e) or "Conflict" in str(e):
+                try:
+                    all_jobs = yubal.list_jobs()
+                    existing_job = next(
+                        (j for j in all_jobs if j.url == download.ytmusic_album_url),
+                        None,
+                    )
+                    if existing_job:
+                        logger.info(
+                            "Found existing job %s for download %d, linking",
+                            existing_job.id,
+                            download_id,
+                        )
+                        s = _session_factory()
+                        try:
+                            d = s.query(AlbumDownload).filter_by(id=download_id).first()
+                            if d:
+                                d.status = DownloadStatus.QUEUED
+                                d.yubal_job_id = existing_job.id
+                                d.queued_at = datetime.now(timezone.utc)
+                                s.commit()
+                        finally:
+                            s.close()
+                        return
+                except Exception as list_err:
+                    logger.warning("Failed to check for existing jobs: %s", list_err)
+
+            # Failed - update download status
             s = _session_factory()
             try:
                 d = s.query(AlbumDownload).filter_by(id=download_id).first()
                 if d:
                     d.status = DownloadStatus.FAILED
-                    d.error_message = str(e)
+                    if "409" in str(e) or "Conflict" in str(e):
+                        d.error_message = "Yubal queue full - try again later"
+                    else:
+                        d.error_message = str(e)
                     s.commit()
             finally:
                 s.close()
