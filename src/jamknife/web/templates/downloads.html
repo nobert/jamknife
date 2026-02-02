@@ -121,9 +121,11 @@
 
 <script>
 async function retryDownload(downloadId) {
-    if (!confirm('Retry this download?')) {
-        return;
-    }
+    const button = event.target;
+    const originalText = button.textContent;
+
+    button.disabled = true;
+    button.textContent = 'Retrying...';
 
     try {
         const response = await fetch(`/api/downloads/${downloadId}/retry`, {
@@ -136,14 +138,23 @@ async function retryDownload(downloadId) {
         if (!response.ok) {
             const error = await response.json();
             alert('Failed to retry download: ' + (error.detail || 'Unknown error'));
+            button.disabled = false;
+            button.textContent = originalText;
             return;
         }
 
-        alert('Download retry initiated. The page will reload.');
-        window.location.reload();
+        button.textContent = 'Queued';
+        const row = button.closest('tr');
+        const statusBadge = row.querySelector('.badge');
+        if (statusBadge) {
+            statusBadge.textContent = 'pending';
+            statusBadge.className = 'badge badge-warning';
+        }
     } catch (error) {
         console.error('Error retrying download:', error);
         alert('Error retrying download: ' + error.message);
+        button.disabled = false;
+        button.textContent = originalText;
     }
 }
 </script>
