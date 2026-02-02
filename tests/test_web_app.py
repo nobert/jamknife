@@ -155,7 +155,7 @@ def test_downloads_page_filter_by_status(client):
             progress=0,
         )
         session.add(failed_download)
-        
+
         # Create a completed download
         completed_download = AlbumDownload(
             ytmusic_album_id="completed123",
@@ -186,11 +186,12 @@ def test_retry_download_endpoint(client, monkeypatch):
     """Ensure retry endpoint resets failed downloads."""
     # Mock YubalClient to avoid actual API calls
     from unittest.mock import Mock
+
     from jamknife.clients.yubal import YubalClient
-    
+
     mock_job = Mock(id="job123")
     monkeypatch.setattr(YubalClient, "create_job", lambda self, url: mock_job)
-    
+
     with web_app._session_factory() as session:
         download = AlbumDownload(
             ytmusic_album_id="retry123",
@@ -226,3 +227,72 @@ def test_retry_non_failed_download_fails(client):
     response = client.post(f"/api/downloads/{_download_id}/retry")
     assert response.status_code == 400
     assert "Only failed downloads" in response.json()["detail"]
+
+
+def test_delete_orphaned_downloads(client):
+    """Ensure orphaned downloads (not attached to any playlist) can be deleted."""
+    # Create an orphaned download (no track matches)
+    with web_app._session_factory() as session:
+        orphaned = AlbumDownload(
+            ytmusic_album_id="orphan123",
+            ytmusic_album_url="https://music.youtube.com/browse/orphan123",
+            album_name="Orphaned Album",
+            artist_name="Orphaned Artist",
+            status=DownloadStatus.COMPLETED,
+        )
+        session.add(orphaned)
+
+        # Create a download attached to a playlist
+        playlist = ListenBrainzPlaylist(
+            name="Test Playlist",
+            mbid="playlist-mbid",
+            creator="test-user",
+            enabled=True,
+        )
+        session.add(playlist)
+        session.flush()
+
+        job = PlaylistSyncJob(playlist_id=playlist.id)
+        session.add(job)
+        session.flush()
+
+        attached_download = AlbumDownload(
+            ytmusic_album_id="attached123",
+            ytmusic_album_url="https://music.youtube.com/browse/attached123",
+            album_name="Attached Album",
+            artist_name="Attached Artist",
+            status=DownloadStatus.COMPLETED,
+        )
+        session.add(attached_download)
+        session.flush()
+
+        # Create a track match linking the download to the playlist
+        from jamknife.database import TrackMatch
+
+        track_match = TrackMatch(
+            sync_job_id=job.id,
+            position=1,
+            recording_mbid="test-mbid",
+            track_name="Test Track",
+            artist_name="Test Artist",
+            album_download_id=attached_download.id,
+        )
+        session.add(track_match)
+        session.commit()
+
+        orphaned_id = orphaned.id
+        attached_id = attached_download.id
+
+    # Delete orphaned downloads
+    response = client.delete("/api/downloads/orphaned")
+    assert response.status_code == 200
+    result = response.json()
+    assert result["count"] == 1
+
+    # Verify only orphaned was deleted
+    with web_app._session_factory() as session:
+        orphaned_check = session.query(AlbumDownload).filter_by(id=orphaned_id).first()
+        assert orphaned_check is None
+
+        attached_check = session.query(AlbumDownload).filter_by(id=attached_id).first()
+        assert attached_check is not None
