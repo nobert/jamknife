@@ -306,7 +306,12 @@ class PlaylistSyncService:
 
             try:
                 playlist = job.playlist
-                plex = PlexClient(self._config.plex_url, self._config.plex_token)
+                plex = PlexClient(
+                    self._config.plex_url,
+                    self._config.plex_token,
+                    self._config.plex_music_library,
+                    self._config.plex_verify_ssl,
+                )
 
                 # Trigger Plex library refresh and wait
                 logger.info("Refreshing Plex library for job %d", job_id)
