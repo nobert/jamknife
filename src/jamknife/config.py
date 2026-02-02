@@ -43,7 +43,7 @@ class Config:
     poll_interval: int = field(
         default_factory=lambda: int(os.environ.get("POLL_INTERVAL", "60"))
     )
-    web_host: str = field(default_factory=lambda: os.environ.get("WEB_HOST", "0.0.0.0"))
+    web_host: str = field(default_factory=lambda: os.environ.get("WEB_HOST", "0.0.0.0"))  # nosec B104
     web_port: int = field(
         default_factory=lambda: int(os.environ.get("WEB_PORT", "8000"))
     )
