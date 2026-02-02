@@ -26,7 +26,7 @@
         <div class="bg-solarized-base02 rounded-lg shadow-xl max-w-lg w-full mx-4">
             <div class="px-6 py-4 border-b border-solarized-base01 flex justify-between items-center">
                 <h3 class="text-lg font-semibold text-solarized-base1">Discovered Playlists</h3>
-                <button @click="showDiscovered = false" class="text-gray-400 hover:text-gray-600">
+                <button @click="showDiscovered = false" class="text-solarized-base01 hover:text-solarized-base1">
                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
@@ -38,7 +38,7 @@
                 </template>
                 <div class="space-y-3">
                     <template x-for="playlist in discoveredPlaylists" :key="playlist.mbid">
-                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                        <div class="flex items-center justify-between p-3 bg-solarized-base03 rounded-lg">
                             <div>
                                 <p class="font-medium text-solarized-base1" x-text="playlist.name"></p>
                                 <p class="text-sm text-solarized-base01">
@@ -47,7 +47,7 @@
                                 </p>
                             </div>
                             <button @click="addPlaylist(playlist.mbid)" 
-                                    class="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-indigo-700">
+                                    class="px-3 py-1 text-sm bg-solarized-blue text-white rounded hover:bg-solarized-cyan">
                                 Add
                             </button>
                         </div>
