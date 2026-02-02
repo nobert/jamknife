@@ -53,6 +53,59 @@ SessionDep = Annotated[Session, Depends(get_session)]
 SyncServiceDep = Annotated[PlaylistSyncService, Depends(get_sync_service)]
 
 
+async def check_and_resume_sync_jobs(session: Session):
+    """Check for sync jobs with completed downloads and resume them."""
+    import asyncio
+
+    # Find sync jobs in DOWNLOADING state
+    downloading_jobs = (
+        session.query(PlaylistSyncJob)
+        .filter(PlaylistSyncJob.status == SyncStatus.DOWNLOADING)
+        .all()
+    )
+
+    for job in downloading_jobs:
+        # Check if all downloads for this job are complete
+        track_matches_with_downloads = [
+            tm for tm in job.track_matches if tm.album_download_id is not None
+        ]
+
+        if not track_matches_with_downloads:
+            continue
+
+        all_complete = all(
+            tm.album_download.status
+            in [DownloadStatus.COMPLETED, DownloadStatus.FAILED]
+            for tm in track_matches_with_downloads
+        )
+
+        if all_complete:
+            logger.info("All downloads complete for sync job %d, resuming...", job.id)
+            # Resume the sync job in a background task
+            asyncio.create_task(resume_sync_job_async(job.id))
+
+
+async def resume_sync_job_async(job_id: int):
+    """Resume a sync job after downloads complete."""
+    import asyncio
+
+    # Run in thread pool since sync service is synchronous
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, resume_sync_job, job_id)
+
+
+def resume_sync_job(job_id: int):
+    """Resume a sync job after downloads complete (synchronous)."""
+    if not _sync_service:
+        logger.error("Sync service not available to resume job %d", job_id)
+        return
+
+    try:
+        _sync_service.resume_sync_job_after_downloads(job_id)
+    except Exception as e:
+        logger.exception("Failed to resume sync job %d: %s", job_id, e)
+
+
 async def update_download_statuses_loop(config):
     """Background task to periodically update download statuses from Yubal."""
     import asyncio
@@ -134,6 +187,10 @@ async def update_download_statuses_loop(config):
 
                 if updated_count > 0:
                     logger.info("Updated %d download(s) from Yubal", updated_count)
+
+                # Check for sync jobs that can now continue
+                if updated_count > 0 and _sync_service:
+                    await check_and_resume_sync_jobs(session)
 
             except Exception as e:
                 logger.error("Error updating download statuses: %s", e)

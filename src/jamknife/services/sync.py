@@ -12,7 +12,6 @@ from jamknife.clients import (
     YTMusicResolver,
     YubalClient,
 )
-from jamknife.clients.yubal import JobStatus as YubalJobStatus
 from jamknife.config import Config
 from jamknife.database import (
     AlbumDownload,
@@ -225,47 +224,22 @@ class PlaylistSyncService:
                         session, missing_tracks, on_progress, 0.40, 0.80
                     )
 
-                    # Trigger Plex library refresh and wait
+                    # Job stays in DOWNLOADING state
+                    # Background task will detect when downloads complete and resume
                     if on_progress:
-                        on_progress("Refreshing Plex library", 0.82)
-                    plex.refresh_library()
+                        on_progress(
+                            "Downloads submitted. Will complete when downloads finish.",
+                            0.80,
+                        )
 
-                    # Wait for library to update (simple delay for now)
-                    import time
-
-                    time.sleep(10)
-
-                    # Re-match previously missing tracks
-                    if on_progress:
-                        on_progress("Re-matching downloaded tracks", 0.85)
-
-                    for track_match in missing_tracks:
-                        if track_match.album_download:
-                            download = track_match.album_download
-                            if download.status == DownloadStatus.COMPLETED:
-                                plex_match = plex.search_track_by_album_and_title(
-                                    download.album_name,
-                                    track_match.track_name,
-                                    download.artist_name,
-                                )
-                                if plex_match:
-                                    track_match.plex_rating_key = plex_match.rating_key
-                                    track_match.matched_in_plex = True
-                                    job.tracks_matched += 1
-                                    job.tracks_missing -= 1
-
-                                    # Cache the mapping
-                                    self._cache_mbid_mapping(
-                                        session,
-                                        track_match.recording_mbid,
-                                        plex_match.rating_key,
-                                        track_match.track_name,
-                                        track_match.artist_name,
-                                        track_match.album_name,
-                                    )
-
+                    logger.info(
+                        "Sync job %d submitted downloads and will resume when complete",
+                        job_id,
+                    )
                     session.commit()
+                    return job
 
+                # No downloads needed - create playlist immediately
                 # Phase 4: Create Plex playlist
                 self._update_job_status(session, job, SyncStatus.CREATING_PLAYLIST)
                 if on_progress:
@@ -299,6 +273,114 @@ class PlaylistSyncService:
                 logger.exception("Sync job %d failed", job_id)
                 job.status = SyncStatus.FAILED
                 job.error_message = str(e)
+                job.completed_at = datetime.now(timezone.utc)
+                session.commit()
+                raise
+
+            return job
+
+    def resume_sync_job_after_downloads(self, job_id: int) -> PlaylistSyncJob:
+        """Resume a sync job after its downloads have completed.
+
+        This is called by the background task when all downloads for a job finish.
+        It performs: Plex refresh → re-match tracks → create playlist.
+
+        Args:
+            job_id: ID of the sync job to resume.
+
+        Returns:
+            The updated sync job.
+        """
+        with self._session_factory() as session:
+            job = session.query(PlaylistSyncJob).filter_by(id=job_id).first()
+            if not job:
+                raise ValueError(f"Sync job {job_id} not found")
+
+            if job.status != SyncStatus.DOWNLOADING:
+                logger.warning(
+                    "Cannot resume job %d: status is %s, not DOWNLOADING",
+                    job_id,
+                    job.status,
+                )
+                return job
+
+            try:
+                playlist = job.playlist
+                plex = PlexClient(self._config.plex_url, self._config.plex_token)
+
+                # Trigger Plex library refresh and wait
+                logger.info("Refreshing Plex library for job %d", job_id)
+                plex.refresh_library()
+
+                # Wait for library to update
+                import time
+
+                time.sleep(10)
+
+                # Re-match previously missing tracks
+                logger.info("Re-matching downloaded tracks for job %d", job_id)
+                missing_tracks = [
+                    tm for tm in job.track_matches if not tm.matched_in_plex
+                ]
+
+                for track_match in missing_tracks:
+                    if track_match.album_download:
+                        download = track_match.album_download
+                        if download.status == DownloadStatus.COMPLETED:
+                            plex_match = plex.search_track_by_album_and_title(
+                                download.album_name,
+                                track_match.track_name,
+                                download.artist_name,
+                            )
+                            if plex_match:
+                                track_match.plex_rating_key = plex_match.rating_key
+                                track_match.matched_in_plex = True
+                                job.tracks_matched += 1
+                                job.tracks_missing -= 1
+
+                                # Cache the mapping
+                                self._cache_mbid_mapping(
+                                    session,
+                                    track_match.recording_mbid,
+                                    plex_match.rating_key,
+                                    track_match.track_name,
+                                    track_match.artist_name,
+                                    track_match.album_name,
+                                )
+
+                session.commit()
+
+                # Create Plex playlist
+                self._update_job_status(session, job, SyncStatus.CREATING_PLAYLIST)
+                logger.info("Creating Plex playlist for job %d", job_id)
+
+                plex_tracks = []
+                for track_match in job.track_matches:
+                    if track_match.matched_in_plex and track_match.plex_rating_key:
+                        plex_track = plex.get_track_by_rating_key(
+                            track_match.plex_rating_key
+                        )
+                        if plex_track:
+                            plex_tracks.append(plex_track)
+
+                if plex_tracks:
+                    plex_playlist = plex.create_playlist(
+                        playlist.name, plex_tracks, replace_existing=True
+                    )
+                    job.plex_playlist_key = str(plex_playlist.ratingKey)
+
+                # Mark as completed
+                self._update_job_status(session, job, SyncStatus.COMPLETED)
+                job.completed_at = datetime.now(timezone.utc)
+                playlist.last_synced_at = datetime.now(timezone.utc)
+                session.commit()
+
+                logger.info("Sync job %d completed after downloads", job_id)
+
+            except Exception as e:
+                logger.exception("Failed to resume sync job %d", job_id)
+                job.status = SyncStatus.FAILED
+                job.error_message = f"Resume failed: {e}"
                 job.completed_at = datetime.now(timezone.utc)
                 session.commit()
                 raise
@@ -452,71 +534,20 @@ class PlaylistSyncService:
                     download.error_message = str(e)
                     session.commit()
 
-            # Wait for all downloads to complete
-            pending_downloads = [
-                d for d in albums_to_download.values() if d.yubal_job_id
-            ]
-            completed = 0
-            total = len(pending_downloads)
+            # Report progress for submitted downloads
+            if on_progress and albums_to_download:
+                submitted_count = sum(
+                    1 for d in albums_to_download.values() if d.yubal_job_id
+                )
+                on_progress(
+                    f"Submitted {submitted_count} album(s) for download",
+                    progress_end,
+                )
 
-            while pending_downloads:
-                import time
-
-                time.sleep(30)
-
-                # Fetch all jobs once per poll cycle to reduce API calls
-                try:
-                    all_jobs = yubal.list_jobs()
-                    jobs_by_id = {job.id: job for job in all_jobs}
-                except Exception as e:
-                    logger.error("Failed to fetch job list: %s", e)
-                    continue
-
-                for download in pending_downloads[:]:
-                    try:
-                        job = jobs_by_id.get(download.yubal_job_id)
-                        if not job:
-                            logger.warning(
-                                "Job %s not found in list", download.yubal_job_id
-                            )
-                            continue
-
-                        download.progress = job.progress
-
-                        if job.status == YubalJobStatus.COMPLETED:
-                            download.status = DownloadStatus.COMPLETED
-                            download.completed_at = datetime.now(timezone.utc)
-                            pending_downloads.remove(download)
-                            completed += 1
-                        elif job.status == YubalJobStatus.FAILED:
-                            download.status = DownloadStatus.FAILED
-                            download.error_message = "Download failed in Yubal"
-                            pending_downloads.remove(download)
-                            completed += 1
-                        elif job.status == YubalJobStatus.CANCELLED:
-                            download.status = DownloadStatus.FAILED
-                            download.error_message = "Download cancelled"
-                            pending_downloads.remove(download)
-                            completed += 1
-                        elif job.status.is_active:
-                            download.status = DownloadStatus.DOWNLOADING
-
-                        session.commit()
-
-                    except Exception as e:
-                        logger.error(
-                            "Failed to check download status for %s: %s",
-                            download.album_name,
-                            e,
-                        )
-
-                if on_progress and total > 0:
-                    progress = progress_start + (
-                        (progress_end - progress_start) * (completed / total)
-                    )
-                    on_progress(
-                        f"Downloading albums ({completed}/{total} complete)", progress
-                    )
+            logger.info(
+                "Submitted %d album(s) for download. Background task will track completion.",
+                len([d for d in albums_to_download.values() if d.yubal_job_id]),
+            )
 
         finally:
             yubal.close()
