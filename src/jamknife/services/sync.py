@@ -301,7 +301,7 @@ class PlaylistSyncService:
                 job.error_message = str(e)
                 job.completed_at = datetime.now(datetime.UTC)
                 session.commit()
-                raise from None
+                raise
 
             return job
 

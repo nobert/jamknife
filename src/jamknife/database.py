@@ -1,7 +1,7 @@
 """SQLite database models and session management."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Optional
