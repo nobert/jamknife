@@ -111,56 +111,71 @@ def run_migrations(session: Session, migrations: list[Migration]) -> None:
 
 def migration_001_add_playlist_schedule(session: Session) -> None:
     """Add enabled and schedule fields to playlists."""
+    columns = {
+        row[1]
+        for row in session.execute(text("PRAGMA table_info(listenbrainz_playlists)"))
+    }
+
     # Add enabled column (default to true for existing playlists)
-    session.execute(
-        text(
-            """
-            ALTER TABLE listenbrainz_playlists
-            ADD COLUMN enabled BOOLEAN DEFAULT 1 NOT NULL
-            """
+    if "enabled" not in columns:
+        session.execute(
+            text(
+                """
+                ALTER TABLE listenbrainz_playlists
+                ADD COLUMN enabled BOOLEAN DEFAULT 1 NOT NULL
+                """
+            )
         )
-    )
+
+    has_sync_day = "sync_day" in columns
+    has_sync_time = "sync_time" in columns
 
     # Add sync_day column for weekly playlists (day of week)
-    session.execute(
-        text(
-            """
-            ALTER TABLE listenbrainz_playlists
-            ADD COLUMN sync_day VARCHAR(20)
-            """
+    if not has_sync_day:
+        session.execute(
+            text(
+                """
+                ALTER TABLE listenbrainz_playlists
+                ADD COLUMN sync_day VARCHAR(20)
+                """
+            )
         )
-    )
+        has_sync_day = True
 
     # Add sync_time column for sync time (HH:MM format)
-    session.execute(
-        text(
-            """
-            ALTER TABLE listenbrainz_playlists
-            ADD COLUMN sync_time VARCHAR(5)
-            """
+    if not has_sync_time:
+        session.execute(
+            text(
+                """
+                ALTER TABLE listenbrainz_playlists
+                ADD COLUMN sync_time VARCHAR(5)
+                """
+            )
         )
-    )
+        has_sync_time = True
 
     # Set default times for existing playlists based on their type
-    session.execute(
-        text(
-            """
-            UPDATE listenbrainz_playlists
-            SET sync_time = '08:00'
-            WHERE sync_time IS NULL
-            """
+    if has_sync_time:
+        session.execute(
+            text(
+                """
+                UPDATE listenbrainz_playlists
+                SET sync_time = '08:00'
+                WHERE sync_time IS NULL
+                """
+            )
         )
-    )
 
-    session.execute(
-        text(
-            """
-            UPDATE listenbrainz_playlists
-            SET sync_day = 'monday'
-            WHERE is_weekly = 1 AND sync_day IS NULL
-            """
+    if has_sync_day:
+        session.execute(
+            text(
+                """
+                UPDATE listenbrainz_playlists
+                SET sync_day = 'monday'
+                WHERE is_weekly = 1 AND sync_day IS NULL
+                """
+            )
         )
-    )
 
     session.commit()
 

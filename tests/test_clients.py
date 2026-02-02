@@ -43,6 +43,22 @@ class TestListenBrainzClient:
 
         assert len(playlists) == 1
 
+    def test_parse_track_with_list_identifier(self):
+        """Test that identifier lists are handled correctly."""
+        client = ListenBrainzClient()
+        track = client._parse_track(
+            {
+                "identifier": [
+                    "https://musicbrainz.org/recording/8a65705b-c08a-455b-910e-a69ed72c68f5"
+                ],
+                "title": "Test Track",
+                "creator": "Test Artist",
+            }
+        )
+
+        assert track is not None
+        assert track.recording_mbid == "8a65705b-c08a-455b-910e-a69ed72c68f5"
+
 
 class TestYubalClient:
     """Tests for Yubal client."""

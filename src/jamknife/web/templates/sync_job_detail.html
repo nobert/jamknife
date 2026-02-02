@@ -56,19 +56,15 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
                 <p class="text-gray-500 dark:text-gray-400">Created</p>
-                <p class="font-medium text-gray-900 dark:text-white">{{ job.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                <p class="font-medium text-gray-900 dark:text-white">{{ job_timestamps.created_at }}</p>
             </div>
             <div>
                 <p class="text-gray-500 dark:text-gray-400">Started</p>
-                <p class="font-medium text-gray-900 dark:text-white">
-                    {% if job.started_at %}{{ job.started_at.strftime('%Y-%m-%d %H:%M:%S') }}{% else %}-{% endif %}
-                </p>
+                <p class="font-medium text-gray-900 dark:text-white">{{ job_timestamps.started_at }}</p>
             </div>
             <div>
                 <p class="text-gray-500 dark:text-gray-400">Completed</p>
-                <p class="font-medium text-gray-900 dark:text-white">
-                    {% if job.completed_at %}{{ job.completed_at.strftime('%Y-%m-%d %H:%M:%S') }}{% else %}-{% endif %}
-                </p>
+                <p class="font-medium text-gray-900 dark:text-white">{{ job_timestamps.completed_at }}</p>
             </div>
         </div>
     </div>
@@ -151,7 +147,7 @@
 <script>
 function syncJobDetail() {
     return {
-        job: {{ job|tojson if job else '{}' }},
+        job: {{ job_json|tojson if job_json else '{}' }},
         pollInterval: null,
         
         get isFinished() {
