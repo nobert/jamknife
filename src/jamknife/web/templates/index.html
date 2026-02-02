@@ -154,32 +154,73 @@
 
     <!-- Active Downloads -->
     {% if active_downloads %}
-    <div class="bg-solarized-base02 rounded-lg shadow">
+    <div class="bg-solarized-base02 rounded-lg shadow" x-data="activeDownloads()" x-init="startPolling()">
         <div class="px-6 py-4 border-b border-solarized-base01">
             <h2 class="text-lg font-semibold text-solarized-base1">Active Downloads</h2>
         </div>
         <div class="divide-y divide-solarized-base01">
-            {% for download in active_downloads %}
-            <div class="p-6">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <p class="font-medium text-solarized-base1">{{ download.album_name }}</p>
-                        <p class="text-sm text-solarized-base0">{{ download.artist_name }}</p>
+            <template x-for="download in downloads" :key="download.id">
+                <div class="p-6">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-medium text-solarized-base1" x-text="download.album_name"></p>
+                            <p class="text-sm text-solarized-base0" x-text="download.artist_name"></p>
+                        </div>
+                        <span class="px-2 py-1 text-xs font-medium rounded-full bg-solarized-blue bg-opacity-20 text-solarized-blue" x-text="download.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())"></span>
                     </div>
-                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-solarized-blue bg-opacity-20 text-solarized-blue">
-                        {{ download.status.value|replace('_', ' ')|title }}
-                    </span>
-                </div>
-                <div class="mt-3">
-                    <div class="w-full bg-solarized-base01 bg-opacity-30 rounded-full h-2">
-                        <div class="bg-primary h-2 rounded-full" style="width: {{ download.progress }}%"></div>
+                    <div class="mt-3">
+                        <div class="w-full bg-solarized-base01 bg-opacity-30 rounded-full h-2">
+                            <div class="bg-primary h-2 rounded-full" :style="`width: ${download.progress}%`"></div>
+                        </div>
+                        <p class="text-xs text-solarized-base01 mt-1" x-text="`${Math.round(download.progress)}%`"></p>
                     </div>
-                    <p class="text-xs text-solarized-base01 mt-1">{{ download.progress|int }}%</p>
                 </div>
-            </div>
-            {% endfor %}
+            </template>
+            <template x-if="downloads.length === 0">
+                <div class="p-6 text-center text-solarized-base01">
+                    <p>No active downloads</p>
+                </div>
+            </template>
         </div>
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function activeDownloads() {
+    return {
+        downloads: {{ active_downloads_json|tojson }},
+        pollInterval: null,
+        
+        async fetchDownloads() {
+            try {
+                const response = await fetch('/api/downloads/active');
+                if (response.ok) {
+                    this.downloads = await response.json();
+                    
+                    // Stop polling if no active downloads
+                    if (this.downloads.length === 0) {
+                        this.stopPolling();
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch downloads:', error);
+            }
+        },
+        
+        startPolling() {
+            this.pollInterval = setInterval(() => this.fetchDownloads(), 30000);
+        },
+        
+        stopPolling() {
+            if (this.pollInterval) {
+                clearInterval(this.pollInterval);
+                this.pollInterval = null;
+            }
+        }
+    }
+}
+</script>
 {% endblock %}

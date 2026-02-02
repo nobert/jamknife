@@ -462,11 +462,25 @@ class PlaylistSyncService:
             while pending_downloads:
                 import time
 
-                time.sleep(5)
+                time.sleep(30)
+
+                # Fetch all jobs once per poll cycle to reduce API calls
+                try:
+                    all_jobs = yubal.list_jobs()
+                    jobs_by_id = {job.id: job for job in all_jobs}
+                except Exception as e:
+                    logger.error("Failed to fetch job list: %s", e)
+                    continue
 
                 for download in pending_downloads[:]:
                     try:
-                        job = yubal.get_job(download.yubal_job_id)
+                        job = jobs_by_id.get(download.yubal_job_id)
+                        if not job:
+                            logger.warning(
+                                "Job %s not found in list", download.yubal_job_id
+                            )
+                            continue
+
                         download.progress = job.progress
 
                         if job.status == YubalJobStatus.COMPLETED:

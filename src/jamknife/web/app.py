@@ -53,9 +53,105 @@ SessionDep = Annotated[Session, Depends(get_session)]
 SyncServiceDep = Annotated[PlaylistSyncService, Depends(get_sync_service)]
 
 
+async def update_download_statuses_loop(config):
+    """Background task to periodically update download statuses from Yubal."""
+    import asyncio
+
+    from jamknife.clients.yubal import JobStatus as YubalJobStatus
+
+    logger.info("Starting download status update loop")
+
+    while True:
+        try:
+            await asyncio.sleep(30)  # Update every 30 seconds
+
+            if not _session_factory:
+                continue
+
+            session = _session_factory()
+            try:
+                # Get all active downloads
+                active_downloads = (
+                    session.query(AlbumDownload)
+                    .filter(
+                        AlbumDownload.status.in_(
+                            [
+                                DownloadStatus.PENDING,
+                                DownloadStatus.QUEUED,
+                                DownloadStatus.DOWNLOADING,
+                            ]
+                        )
+                    )
+                    .filter(AlbumDownload.yubal_job_id.isnot(None))
+                    .all()
+                )
+
+                if not active_downloads:
+                    continue
+
+                # Fetch all jobs from Yubal once
+                yubal = YubalClient(config.yubal_url)
+                try:
+                    all_jobs = yubal.list_jobs()
+                    jobs_by_id = {job.id: job for job in all_jobs}
+                finally:
+                    yubal.close()
+
+                # Update each download based on job status
+                updated_count = 0
+                for download in active_downloads:
+                    job = jobs_by_id.get(download.yubal_job_id)
+                    if not job:
+                        logger.warning(
+                            "Job %s not found for download %s",
+                            download.yubal_job_id,
+                            download.id,
+                        )
+                        continue
+
+                    # Update progress
+                    download.progress = job.progress
+
+                    # Update status based on job status
+                    if job.status == YubalJobStatus.COMPLETED:
+                        download.status = DownloadStatus.COMPLETED
+                        download.completed_at = datetime.now(timezone.utc)
+                        updated_count += 1
+                    elif job.status == YubalJobStatus.FAILED:
+                        download.status = DownloadStatus.FAILED
+                        download.error_message = (
+                            job.error_message or "Download failed in Yubal"
+                        )
+                        updated_count += 1
+                    elif job.status == YubalJobStatus.CANCELLED:
+                        download.status = DownloadStatus.FAILED
+                        download.error_message = "Download cancelled"
+                        updated_count += 1
+                    elif job.status.is_active:
+                        download.status = DownloadStatus.DOWNLOADING
+
+                session.commit()
+
+                if updated_count > 0:
+                    logger.info("Updated %d download(s) from Yubal", updated_count)
+
+            except Exception as e:
+                logger.error("Error updating download statuses: %s", e)
+            finally:
+                session.close()
+
+        except asyncio.CancelledError:
+            logger.info("Download status update loop cancelled")
+            break
+        except Exception as e:
+            logger.error("Unexpected error in download status update loop: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
+    import asyncio
+
     global _session_factory, _sync_service
 
     config = get_config()
@@ -79,8 +175,18 @@ async def lifespan(app: FastAPI):
     # Initialize sync service
     _sync_service = PlaylistSyncService(config, _session_factory)
 
+    # Start background task to update download statuses
+    update_task = asyncio.create_task(update_download_statuses_loop(config))
+
     logger.info("Jamknife started")
     yield
+
+    # Cancel background task
+    update_task.cancel()
+    try:
+        await update_task
+    except asyncio.CancelledError:
+        pass
 
     logger.info("Jamknife shutting down")
 
@@ -529,6 +635,44 @@ async def list_downloads(
     ]
 
 
+@app.get("/api/downloads/active")
+async def list_active_downloads(
+    session: SessionDep, limit: int = 100
+) -> list[AlbumDownloadResponse]:
+    """List active album downloads (pending, queued, downloading)."""
+    downloads = (
+        session.query(AlbumDownload)
+        .filter(
+            AlbumDownload.status.in_(
+                [
+                    DownloadStatus.PENDING,
+                    DownloadStatus.QUEUED,
+                    DownloadStatus.DOWNLOADING,
+                ]
+            )
+        )
+        .order_by(AlbumDownload.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        AlbumDownloadResponse(
+            id=d.id,
+            ytmusic_album_id=d.ytmusic_album_id,
+            album_name=d.album_name,
+            artist_name=d.artist_name,
+            status=d.status.value,
+            progress=d.progress,
+            error_message=d.error_message,
+            queued_at=d.queued_at,
+            completed_at=d.completed_at,
+            created_at=d.created_at,
+        )
+        for d in downloads
+    ]
+
+
 @app.post("/api/downloads/{download_id}/retry")
 async def retry_download(
     download_id: int, session: SessionDep, background_tasks: BackgroundTasks
@@ -651,6 +795,18 @@ async def index(request: Request, session: SessionDep):
         .all()
     )
 
+    # Serialize active downloads for JSON in template
+    active_downloads_json = [
+        {
+            "id": d.id,
+            "album_name": d.album_name,
+            "artist_name": d.artist_name,
+            "status": d.status.value,
+            "progress": d.progress,
+        }
+        for d in active_downloads
+    ]
+
     return templates.TemplateResponse(
         "index.html",
         {
@@ -659,6 +815,7 @@ async def index(request: Request, session: SessionDep):
             "playlists": playlists,
             "recent_jobs": recent_jobs,
             "active_downloads": active_downloads,
+            "active_downloads_json": active_downloads_json,
         },
     )
 
