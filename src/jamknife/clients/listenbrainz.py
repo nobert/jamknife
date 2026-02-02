@@ -62,7 +62,7 @@ class ListenBrainzClient:
     def _get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict:
         """Make a GET request to the API with retry logic."""
         url = f"{LISTENBRAINZ_API_BASE}{endpoint}"
-        
+
         last_error = None
         for attempt in range(self._max_retries):
             try:
@@ -94,7 +94,7 @@ class ListenBrainzClient:
                 # Don't retry on HTTP errors (4xx, 5xx)
                 logger.error(f"HTTP error for {url}: {e.response.status_code} {e.response.text}")
                 raise
-        
+
         # All retries exhausted
         logger.error(
             f"All {self._max_retries} retry attempts failed for {url}. "
