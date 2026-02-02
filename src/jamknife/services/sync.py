@@ -289,7 +289,7 @@ class PlaylistSyncService:
                 # Mark as completed
                 self._update_job_status(session, job, SyncStatus.COMPLETED)
                 job.completed_at = datetime.now(timezone.utc)
-                playlist.last_synced_at = datetime.now(datetime.UTC)
+                playlist.last_synced_at = datetime.now(timezone.utc)
                 session.commit()
 
                 if on_progress:

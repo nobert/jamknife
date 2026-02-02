@@ -19,6 +19,7 @@ from jamknife.database import (
     ListenBrainzPlaylist,
     PlaylistSyncJob,
     SyncStatus,
+    TrackMatch,
     init_database,
 )
 from jamknife.services.sync import PlaylistSyncService
@@ -582,6 +583,26 @@ async def retry_download(
     background_tasks.add_task(start_download)
 
     return {"message": "Download retry initiated", "download_id": download_id}
+
+
+@app.delete("/api/downloads/orphaned")
+async def delete_orphaned_downloads(session: SessionDep):
+    """Delete downloads that are not attached to any playlist."""
+    # Find downloads with no associated track matches
+    orphaned_downloads = (
+        session.query(AlbumDownload)
+        .outerjoin(TrackMatch, TrackMatch.album_download_id == AlbumDownload.id)
+        .filter(TrackMatch.id.is_(None))
+        .all()
+    )
+
+    count = len(orphaned_downloads)
+    for download in orphaned_downloads:
+        session.delete(download)
+
+    session.commit()
+
+    return {"message": f"Deleted {count} orphaned download(s)", "count": count}
 
 
 # ============================================================================

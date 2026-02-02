@@ -7,6 +7,12 @@
     <!-- Header -->
     <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Album Downloads</h1>
+        <button 
+            onclick="cleanOrphanedDownloads()"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+        >
+            Clean Orphaned Downloads
+        </button>
     </div>
 
     <!-- Filters -->
@@ -155,6 +161,34 @@ async function retryDownload(downloadId) {
         alert('Error retrying download: ' + error.message);
         button.disabled = false;
         button.textContent = originalText;
+    }
+}
+
+async function cleanOrphanedDownloads() {
+    if (!confirm('Delete all downloads not attached to any playlist? This cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/downloads/orphaned', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            alert('Failed to clean orphaned downloads: ' + (error.detail || 'Unknown error'));
+            return;
+        }
+
+        const result = await response.json();
+        alert(result.message);
+        window.location.reload();
+    } catch (error) {
+        console.error('Error cleaning orphaned downloads:', error);
+        alert('Error cleaning orphaned downloads: ' + error.message);
     }
 }
 </script>
