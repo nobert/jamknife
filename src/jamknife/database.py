@@ -4,7 +4,6 @@ import logging
 from datetime import datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Optional
 
 from sqlalchemy import (
     Boolean,
@@ -150,7 +149,7 @@ class TrackMatch(Base):
 
     # Relationships
     sync_job: Mapped["PlaylistSyncJob"] = relationship(back_populates="track_matches")
-    album_download: Mapped[Optional["AlbumDownload"]] = relationship(
+    album_download: Mapped["AlbumDownload | None"] = relationship(
         back_populates="track_matches"
     )
 

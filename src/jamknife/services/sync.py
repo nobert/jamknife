@@ -195,15 +195,15 @@ class PlaylistSyncService:
                 matched_tracks = []
                 missing_tracks = []
 
-                for i, track in enumerate(lb_playlist.tracks):
-                    progress = 0.10 + (0.30 * (i / len(lb_playlist.tracks)))
+                for _i, track in enumerate(lb_playlist.tracks):
+                    progress = 0.10 + (0.30 * (_i / len(lb_playlist.tracks)))
                     if on_progress:
                         on_progress(
-                            f"Matching track {i+1}/{len(lb_playlist.tracks)}", progress
+                            f"Matching track {_i+1}/{len(lb_playlist.tracks)}", progress
                         )
 
                     track_match = self._match_track(
-                        session, job, track, i, plex, ytmusic
+                        session, job, track, _i, plex, ytmusic
                     )
                     session.add(track_match)
 
@@ -439,7 +439,7 @@ class PlaylistSyncService:
                     job = yubal.create_job(download.ytmusic_album_url)
                     download.yubal_job_id = job.id
                     download.status = DownloadStatus.QUEUED
-                    download.queued_at = datetime.now(timezone.utc)
+                    download.queued_at = datetime.now(datetime.UTC)
                     session.commit()
 
                 except Exception as e:
