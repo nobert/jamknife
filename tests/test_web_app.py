@@ -6,7 +6,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-from jamknife.database import ListenBrainzPlaylist, PlaylistSyncJob, SyncStatus
+from jamknife.database import (
+    AlbumDownload,
+    DownloadStatus,
+    ListenBrainzPlaylist,
+    PlaylistSyncJob,
+    SyncStatus,
+)
 from jamknife.web.app import setup_templates
 
 web_app = importlib.import_module("jamknife.web.app")
@@ -59,6 +65,23 @@ def _create_playlist_and_job():
         return playlist.id, job.id
 
 
+def _create_download():
+    """Create a download record in the app database."""
+    with web_app._session_factory() as session:
+        download = AlbumDownload(
+            ytmusic_album_id="album-123",
+            ytmusic_album_url="https://music.youtube.com/playlist?list=OLAK5uy_test",
+            album_name="Test Album",
+            artist_name="Test Artist",
+            status=DownloadStatus.QUEUED,
+            progress=25,
+        )
+        session.add(download)
+        session.commit()
+        session.refresh(download)
+        return download.id
+
+
 def test_sync_job_detail_page_renders(client):
     """Ensure sync job detail page renders without template errors."""
     playlist_id, job_id = _create_playlist_and_job()
@@ -94,3 +117,25 @@ def test_list_playlists_api_returns_json(client):
     assert "enabled" in payload[0]
     assert "sync_day" in payload[0]
     assert "sync_time" in payload[0]
+
+
+def test_index_page_renders(client):
+    """Ensure index page renders with jobs and downloads."""
+    _playlist_id, _job_id = _create_playlist_and_job()
+    _download_id = _create_download()
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert "Daily Jams" in response.text
+    assert "Test Album" in response.text
+
+
+def test_downloads_page_renders(client):
+    """Ensure downloads page renders without template errors."""
+    _download_id = _create_download()
+
+    response = client.get("/downloads")
+
+    assert response.status_code == 200
+    assert "Test Album" in response.text
