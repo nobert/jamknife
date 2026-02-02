@@ -105,7 +105,7 @@ class TestYubalClient:
     def test_client_initialization(self):
         """Test client initialization."""
         client = YubalClient("http://localhost:8000")
-        assert client._base_url == "http://localhost:8000"
+        assert client._base_url == "http://localhost:8000/api"
 
     def test_job_status_enum(self):
         """Test JobStatus enum."""

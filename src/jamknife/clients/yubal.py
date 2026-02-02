@@ -68,10 +68,11 @@ class YubalClient:
         """Initialize the Yubal client.
 
         Args:
-            base_url: Base URL of the Yubal API (e.g., http://localhost:8080).
+            base_url: Base URL of the Yubal server (e.g., http://localhost:8080).
+                     The /api prefix will be added automatically.
             timeout: Request timeout in seconds.
         """
-        self._base_url = base_url.rstrip("/")
+        self._base_url = base_url.rstrip("/") + "/api"
         self._timeout = timeout
         self._client = httpx.Client(timeout=timeout)
 
