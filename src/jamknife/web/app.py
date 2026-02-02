@@ -251,7 +251,7 @@ async def list_playlists(session: SessionDep) -> list[PlaylistResponse]:
         .order_by(ListenBrainzPlaylist.created_at.desc())
         .all()
     )
-    return [PlaylistResponse.model_validate(p) for p in playlists]
+    return [PlaylistResponse.model_validate(p, from_attributes=True) for p in playlists]
 
 
 @app.get("/api/playlists/discover")
@@ -283,7 +283,7 @@ async def add_playlist(
     # Check if already exists
     existing = session.query(ListenBrainzPlaylist).filter_by(mbid=request.mbid).first()
     if existing:
-        return PlaylistResponse.model_validate(existing)
+        return PlaylistResponse.model_validate(existing, from_attributes=True)
 
     # Discover and find the playlist
     discovered = sync_service.discover_playlists()
@@ -293,7 +293,7 @@ async def add_playlist(
         raise HTTPException(status_code=404, detail="Playlist not found")
 
     playlist = sync_service.add_playlist(playlist)
-    return PlaylistResponse.model_validate(playlist)
+    return PlaylistResponse.model_validate(playlist, from_attributes=True)
 
 
 @app.patch("/api/playlists/{playlist_id}")
@@ -341,7 +341,7 @@ async def update_playlist(
 
     session.commit()
     session.refresh(playlist)
-    return PlaylistResponse.model_validate(playlist)
+    return PlaylistResponse.model_validate(playlist, from_attributes=True)
 
 
 @app.post("/api/playlists/refresh")
