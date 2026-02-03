@@ -244,7 +244,7 @@ async def update_download_statuses_loop(config):
                         queued_at = download.queued_at
                         if queued_at and queued_at.tzinfo is None:
                             queued_at = queued_at.replace(tzinfo=timezone.utc)
-                        
+
                         if queued_at:
                             time_downloading = (
                                 datetime.now(timezone.utc) - queued_at
