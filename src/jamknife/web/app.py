@@ -240,19 +240,25 @@ async def update_download_statuses_loop(config):
                 for download in active_downloads:
                     # Check for timeout (2 hours in downloading state)
                     if download.status == DownloadStatus.DOWNLOADING:
-                        time_downloading = (
-                            datetime.now(timezone.utc) - download.queued_at
-                        ).total_seconds()
-                        if time_downloading > 7200:  # 2 hours
-                            logger.warning(
-                                "Download %d timed out after %d seconds",
-                                download.id,
-                                time_downloading,
-                            )
-                            download.status = DownloadStatus.FAILED
-                            download.error_message = f"Download timed out after {time_downloading / 3600:.1f} hours"
-                            updated_count += 1
-                            continue
+                        # Ensure queued_at has timezone info
+                        queued_at = download.queued_at
+                        if queued_at and queued_at.tzinfo is None:
+                            queued_at = queued_at.replace(tzinfo=timezone.utc)
+                        
+                        if queued_at:
+                            time_downloading = (
+                                datetime.now(timezone.utc) - queued_at
+                            ).total_seconds()
+                            if time_downloading > 7200:  # 2 hours
+                                logger.warning(
+                                    "Download %d timed out after %d seconds",
+                                    download.id,
+                                    time_downloading,
+                                )
+                                download.status = DownloadStatus.FAILED
+                                download.error_message = f"Download timed out after {time_downloading / 3600:.1f} hours"
+                                updated_count += 1
+                                continue
 
                     job = jobs_by_id.get(download.yubal_job_id)
                     if not job:
